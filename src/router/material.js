@@ -18,6 +18,7 @@
 
 const Router = require('koa-router')
 const router = new Router()
+const materialController = require('../controller/material')
 
 /**
  * 1.从请求中拿到参数
@@ -25,15 +26,12 @@ const router = new Router()
  * 3.将数据返回
  */
 router.post('/list',async(ctx)=>{
-  const {
-    offset,
-    limited,
-    keyword,
-    sort
-  } = ctx.request.body
-  console.log(offset,limited)
-  
-  
+  const data = await materialController.findInventoryMaterialList(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
 })
 
 module.exports = router
