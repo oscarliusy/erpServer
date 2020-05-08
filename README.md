@@ -8,3 +8,4 @@
 使用koa-router定义路由规则
 使用koa-bodyparser解析请求体
 使用log4js记录日志
+使用koa2-cors解决跨域

@@ -4,7 +4,7 @@ const Log = require('../logger');
 
 const router = new Router();
 
-router.prefix('/api');
+router.prefix('/api/v1');
 
 const combine = () => {
     let mods = Util.getModules('src/router')
