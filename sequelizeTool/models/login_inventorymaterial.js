@@ -9,6 +9,11 @@ module.exports = (sequelize, DataTypes) => {
     price:DataTypes.DECIMAL
   }, {});
   Login_inventorymaterial.associate = function(models) {
+    models.Login_inventorymaterial.belongsTo(models.Login_user,
+      {
+        foreignKey:"userPurchase_id"
+      }
+    )
   };
   return Login_inventorymaterial;
 };

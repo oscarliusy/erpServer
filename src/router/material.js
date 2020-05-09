@@ -34,4 +34,24 @@ router.post('/list',async(ctx)=>{
   }
 })
 
+router.post('/detail/:id',async(ctx)=>{
+  //console.log(ctx.params.id)
+  
+  const data = await materialController.findInventoryMaterialById(ctx.params.id)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/edit',async(ctx)=>{
+  const data = await materialController.changeInventoryMaterial(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 module.exports = router
