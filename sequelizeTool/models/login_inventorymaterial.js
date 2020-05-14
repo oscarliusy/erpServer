@@ -14,6 +14,14 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey:"userPurchase_id"
       }
     )
-  };
+    models.Login_inventorymaterial.belongsToMany(models.Login_instock,{
+      through:{
+        model:models.Login_initem,
+        unique:false
+      },
+      foreignKey:'materialName_id',
+      constraints:false
+  })
+  }
   return Login_inventorymaterial;
-};
+}

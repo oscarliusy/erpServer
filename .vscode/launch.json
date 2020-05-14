@@ -11,7 +11,7 @@
       "program": "${workspaceRoot}/node_modules/mocha/bin/mocha",
       "stopOnEntry": false,
       "args": [
-        "test/router/index.test.js"
+        "test/sequelize.test.js"
       ],
       "cwd": "${workspaceRoot}",
       "preLaunchTask": null,

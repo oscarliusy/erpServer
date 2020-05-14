@@ -54,4 +54,39 @@ router.post('/edit',async(ctx)=>{
   }
 })
 
+router.post('/add',async(ctx)=>{
+  const data = await materialController.addInventoryMaterial(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/purchaserList',async(ctx)=>{
+  const data = await materialController.findPurchasers()
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/search',async(ctx)=>{
+  const data = await materialController.findIMListForInstork(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/instock',async(ctx)=>{
+  const data = await materialController.instock(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 module.exports = router
