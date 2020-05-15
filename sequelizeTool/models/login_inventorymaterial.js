@@ -21,7 +21,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       foreignKey:'materialName_id',
       constraints:false
-  })
+    })
+    models.Login_inventorymaterial.hasMany(models.Login_initem,
+      {
+        foreignKey:"materialName_id"
+      }
+    )
   }
   return Login_inventorymaterial;
 }

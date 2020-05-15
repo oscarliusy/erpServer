@@ -164,18 +164,58 @@ const createInstock = async(params) =>{
   })
 }
 
-const findInstockDetail = async()=>{
-  const instockItem = await models.Login_instock.findOne({
+/**
+ * @param {id,offset,limited} params 
+ * 1.根据id查询符合条件的initem
+ * 2.根据initem中的id获取符合条件的IM
+ * 3.将二者拼接成符合需求的data
+ */
+const findInstockDetail = async(params)=>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const result = await models.Login_initem.findAndCountAll({
     where:{
-      code:'test-003'
+      master_id:params.id
     },
-    //关联物料数据和initem数据
-    include:{
+    order:[['id','ASC']] ,//ASC:正序  DESC:倒序
+    offset:offset,
+    limit:limited,
+    attributes:['amountIn'],
+    include:[{
       model:models.Login_inventorymaterial,
-      through: { attributes: ['amountIn'] }
-    }
+      attributes:['uniqueId']
+    }],
   })
- return instockItem
+
+  const data = await instockDetailDataHandler(result)
+  return data
+}
+
+const instockDetailDataHandler = async(result)=>{
+  let data = {}
+  data.total = result.count
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    temp.uniqueId = item.Login_inventorymaterial.uniqueId
+    temp.amount = item.amountIn
+    return temp
+  })
+  return data
+}
+
+const findInstockList = async(params)=>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const keyword = params.keyword || ''
+
+  const result = await models.Login_instock.findAndCountAll({
+    order:[['id','DESC']] ,//ASC:正序  DESC:倒序
+    offset:offset,
+    limit:limited,
+    include:[models.Login_user]
+  })
+  let data = InstockDataHandler(result)
+  return data
 }
 
 const findPurchasers = async()=>{
@@ -183,6 +223,24 @@ const findPurchasers = async()=>{
     attributes:['id','name']
   })
   return usersList
+}
+
+const InstockDataHandler = (result)=>{
+  let data = {}
+  let instockKeys = CONSTANT.INSTOCKKEYS
+  data.total = result.count
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    instockKeys.forEach(key=>{
+      if(key === 'userInstock_id'){
+        temp.user = item.Login_user.name
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
+  return data
 }
 //处理inventorymaterial的数据,按新的顺序包装一下,将外键查询的Login_user放进来
 const IMDataHandler = (result) => {
@@ -228,6 +286,7 @@ module.exports = {
   addInventoryMaterial,
   findPurchasers,
   findIMListForInstork,
-  instock
-
+  instock,
+  findInstockList,
+  findInstockDetail
 }

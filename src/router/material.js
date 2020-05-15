@@ -89,4 +89,24 @@ router.post('/instock',async(ctx)=>{
     data:data
   }
 })
+
+router.post('/instocklog',async(ctx)=>{
+  const data = await materialController.findInstockList(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/instock/:id',async(ctx)=>{
+  let params = ctx.request.body
+  params.id = ctx.params.id
+  const data = await materialController.findInstockDetail(params)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 module.exports = router

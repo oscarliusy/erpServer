@@ -6,6 +6,11 @@ module.exports = (sequelize, DataTypes) => {
     materialName_id:DataTypes.INTEGER(11),
   }, {});
   Login_initem.associate = function(models) {
+    models.Login_initem.belongsTo(models.Login_inventorymaterial,
+      {
+        foreignKey:"materialName_id"
+      }
+    )
   }
   return Login_initem;
 };
