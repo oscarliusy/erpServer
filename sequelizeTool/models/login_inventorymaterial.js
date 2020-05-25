@@ -27,6 +27,20 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey:"materialName_id"
       }
     )
+    //物料与产品多对多
+    models.Login_inventorymaterial.belongsToMany(models.Login_producttemp,{
+      through:{
+        model:models.Login_productmaterial,
+        unique:false
+      },
+      foreignKey:'pmMaterial_id',
+      constraints:false
+    })
+    models.Login_inventorymaterial.hasMany(models.Login_productmaterial,
+      {
+        foreignKey:"pmMaterial_id"
+      }
+    )
   }
   return Login_inventorymaterial;
 }

@@ -15,6 +15,9 @@ module.exports = (sequelize, DataTypes) => {
     models.Login_user.hasMany(models.Login_instock,{
       foreignKey:"userInstock_id"
     })
+    models.Login_user.hasMany(models.Login_producttemp,{
+      foreignKey:"creater_id"
+    })
   }
   return Login_user
 };
