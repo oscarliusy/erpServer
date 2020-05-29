@@ -56,6 +56,32 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey:"site_id"
       }
     )
+    models.Login_producttemp.belongsToMany(models.Login_preoutstock,{
+      through:{
+        model:models.Login_preoutitem,
+        unique:false
+      },
+      foreignKey:'productName_id',
+      constraints:false
+    })
+    models.Login_producttemp.hasMany(models.Login_preoutitem,
+      {
+        foreignKey:"productName_id"
+      }
+    )
+    models.Login_producttemp.belongsToMany(models.Login_outstock,{
+      through:{
+        model:models.Login_outitem,
+        unique:false
+      },
+      foreignKey:'productName_id',
+      constraints:false
+    })
+    models.Login_producttemp.hasMany(models.Login_outitem,
+      {
+        foreignKey:"productName_id"
+      }
+    )
   }
   return Login_producttemp;
 };

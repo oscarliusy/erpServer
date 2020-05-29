@@ -11,7 +11,7 @@ router.post('/list',async(ctx)=>{
   }
 })
 
-router.post('/siteList',async(ctx)=>{
+router.post('/siteMap',async(ctx)=>{
   const data = await productController.findSites()
   ctx.body = {
     code:200,
@@ -40,5 +40,40 @@ router.post('/edit',async(ctx)=>{
   }
 })
 
+router.post('/add',async(ctx)=>{
+  const data = await productController.createProduct(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/list',async(ctx)=>{
+  const data = await productController.findPreoutstockList(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/copy/:id',async(ctx)=>{ 
+  const data = await productController.copyPreoutstockById(ctx.params.id)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/outstock/:id',async(ctx)=>{ 
+  const data = await productController.preToOutstockById(ctx.params.id)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 
 module.exports = router

@@ -39,6 +39,11 @@ module.exports = function(sequelize, DataTypes) {
         model: 'login_user',
         key: 'id'
       }
+    },
+    has_out: {
+      type: DataTypes.INTEGER(1),
+      allowNull: true,
+      defaultValue: '1'
     }
   }, {
     tableName: 'login_preoutstock'

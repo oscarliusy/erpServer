@@ -18,6 +18,12 @@ module.exports = (sequelize, DataTypes) => {
     models.Login_user.hasMany(models.Login_producttemp,{
       foreignKey:"creater_id"
     })
+    models.Login_user.hasMany(models.Login_preoutstock,{
+      foreignKey:"user_id"
+    })
+    models.Login_user.hasMany(models.Login_outstock,{
+      foreignKey:"userOutstock_id"
+    })
   }
   return Login_user
 };

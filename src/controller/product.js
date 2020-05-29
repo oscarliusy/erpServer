@@ -25,10 +25,59 @@ const findProductList = async(params) =>{
     where:where,
     offset:offset,
     limit:limited,
-    include:[models.Login_user,models.Login_site,models.Login_site,models.Login_inventorymaterial]
+    include:[models.Login_user,models.Login_site,models.Login_inventorymaterial]
   })
 
   let data = productDataHandler(result)
+  return data
+}
+
+const findPreoutstockList = async(params) =>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+
+  const result = await models.Login_preoutstock.findAndCountAll({
+    order:[['id','DESC']] ,//ASC:正序  DESC:倒序
+    offset:offset,
+    limit:limited,
+    include:[{
+      model:models.Login_user,
+      attributes:['name']
+    }
+    ,{
+      model:models.Login_producttemp,
+      attributes:['sku']
+    }
+  ]
+  })
+
+  let data = preoutstockDataHandler(result)
+  return data
+}
+
+const preoutstockDataHandler = (result) =>{
+  let data = {}
+  let preOutstockKeys = CONSTANT.PREOUTSTOCK_KEYS
+  data.total = result.count
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    preOutstockKeys.forEach(key=>{
+      if(key === 'user_id'){
+        temp.user = item.Login_user.name
+      }else if(key === 'products'){
+        let _products = item.Login_producttemps.map(proItem=>{
+          return {
+            sku:proItem.sku,
+            amount:proItem.Login_preoutitem.amount
+          }
+        })
+        temp.products = _products
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
   return data
 }
 
@@ -70,10 +119,75 @@ const productDataHandler = (result) => {
 }
 
 const findSites = async()=>{
-  const siteList = await models.Login_site.findAll({
+  const siteMap = await models.Login_site.findAll({
     attributes:['id','name']
   })
-  return siteList
+  return siteMap
+}
+
+/**
+ * 1.获取预出库对象和关联的产品,创建params和list
+ * 2.根据params创建出库对象,根据list创建outitem对象关联
+ * 3.返回状态码
+ */
+const preToOutstockById = async(id) =>{
+  
+}
+
+/**
+ * 1.根据id,获取预出库对象,连带产品项
+ * 2.构建params,创建复制预出库对象
+ * 3.遍历产品项,使用复制预出库对象创建关联项
+ * 4.返回状态值
+ */
+const copyPreoutstockById = async(id)=>{
+  let status = "failed",msg=""
+  let preoutstockOrigin = await models.Login_preoutstock.findOne({
+    where:{
+      id:id
+    },
+    include:[{
+      model:models.Login_producttemp,
+      attributes:['id']
+    }]
+  })
+  const copyParams = buildPreoutstockCopyParams(preoutstockOrigin)
+  let copyPreoutstockObj = await models.Login_preoutstock.create(copyParams)
+  buildPreoutItem(copyPreoutstockObj,preoutstockOrigin)
+
+  return {
+    status:'succeed',
+    msg:'已成功复制'
+  }
+}
+
+const buildPreoutstockCopyParams=(params)=>{
+  let _params = JSON.parse(JSON.stringify(params))
+  delete _params.id
+  delete _params.Login_producttemps
+  if(params.pcode.length < 28){
+    _params.pcode = params.pcode + '副本'
+  }
+  _params.ptime = Date.now()
+  _params.has_out = 0
+  return _params
+}
+
+const buildPreoutItem = async(copyObj,origin)=>{
+  const productIds = origin.Login_producttemps.map(item=>{
+    return item.id
+  })
+  const amounts = origin.Login_producttemps.map(item=>{
+    return item.Login_preoutitem.amount
+  })
+  const productList = await models.Login_producttemp.findAll({
+    where:{
+      id:productIds
+    }
+  })
+  productList.forEach((item,index)=>{
+    copyObj.setLogin_producttemps(item,{through:{amount:amounts[index]}})
+  })
 }
 
 const findProductById = async(id)=>{
@@ -188,6 +302,137 @@ const updateProductMaterial = async(params)=>{
   }
 }
 
+const createProduct = async(params)=>{
+  const IsSkuRepeat = await checkSkuRepeat(params.sku) 
+  let msg = ""
+  let status = ""
+  
+  if(!IsSkuRepeat){
+    const formatParams = productParamsFormat(params)
+    const hasAllComputeAttributes = checkComputeAttribute(formatParams)
+  
+    let productObj
+    if(hasAllComputeAttributes) {
+      productObj = await createProductWithCompute(formatParams)
+    }else{
+      productObj = await createProductWithoutCompute(formatParams)
+    }
+
+    await createProductMaterial(params,productObj)
+
+    msg = "已成功新增产品"
+    status = "succeed"
+  }else{
+    msg = "sku重复,无法创建新产品"
+    status = "failed"
+  }
+  
+  return {
+    msg:msg,
+    status:status
+  }
+}
+
+/**
+ * 1.取出materials的id列表,根据params的id找出IM对象
+ * 2.遍历IM对象,配合productObj创建productmaterial对象
+ *
+ */
+const createProductMaterial = async(params,productObj) =>{
+  const imIds = params.materials.map(item=>{
+    return item.id
+  })
+  
+  const IMObjList = await models.Login_inventorymaterial.findAll({
+    where:{
+      id:imIds
+    }
+  })
+
+  IMObjList.map((item,index)=>{
+    productObj.setLogin_inventorymaterials(item,{through:{pmAmount:params.materials[index].amount}})
+  })
+}
+const checkSkuRepeat = async(sku) =>{
+  let skuRes = await models.Login_producttemp.findAndCountAll({
+    where:{
+      sku:sku
+    }
+  })
+  return Boolean(skuRes.count)
+} 
+
+//遍历attribute-type的字典,对params做数据类型转换和默认值写入.
+const productParamsFormat = (params) =>{
+  delete params.authToken
+  for(let key in CONSTANT.PRODUCT_PARAMS_MAP){
+    let type = CONSTANT.PRODUCT_PARAMS_MAP[key].type     
+      let value = params[key] || CONSTANT.PRODUCT_PARAMS_MAP[key].default
+      type === "float" ? value = parseFloat(value) : null
+      params[key] = value
+  }
+  params.c_time = Date.now()
+  return params
+}
+const checkComputeAttribute = (params) =>{
+  //若有一项为0则为false
+  let attributesHasNoZero = true
+  //仅检查涉及计算的项目,若缺项或某项为0,则拒绝计算.
+  for(let key of CONSTANT.PRODUCT_CALC_LIST){
+    if(!params[key] || params[key] === 0) attributesHasNoZero = false 
+  }
+
+  //计算dhlfee是否存在
+  let {_dhlfee}  = calDHLShippingFee(params)
+  if(_dhlfee === 0){
+    attributesHasNoZero = false
+  }
+  return attributesHasNoZero  
+}
+/**
+ *1.计算dhlFee,使用{...params,dhlFee:xxx}传递新数据.
+ *1.1 注意汇率问题如何解决
+ *2.计算shrinkage,margin,marginRate 
+ *3.新增产品
+ */
+const createProductWithCompute = async(params) =>{
+  let {_dhlfee,_dhlShippingFee} = calDHLShippingFee(params)
+  let _shrinkage = calShrinkage({
+    ...params,
+    dhlfee:_dhlfee
+  })
+  let {_margin,_marginRate} = calMargin({
+    ...params,
+    dhlfee:_dhlfee,
+    shrinkage:_shrinkage
+  })
+  let _productCostPercentage = calProductCostPercentage(params)
+
+  let productObj = await models.Login_producttemp.create({
+    ...params,
+    shrinkage:_shrinkage,
+    margin:_margin,
+    marginRate:_marginRate,
+    productCostPercentage:_productCostPercentage,
+    dhlShippingFee:_dhlShippingFee
+  })
+  return productObj
+}
+
+const createProductWithoutCompute = async(params) =>{
+  let productObj = await models.Login_producttemp.create({
+    ...params,
+    shrinkage:0,
+    margin:0,
+    marginRate:0,
+    productCostPercentage:0,
+    dhlShippingFee:0
+  })
+  return productObj
+}
+
+
+
 //检查purchasePrice,freightFee,amazonSalePrice三项是否修改
 const checkProductParams = (params,productOrigin)=>{
   return !(params.purchasePrice === productOrigin.purchasePrice  
@@ -222,8 +467,8 @@ const buildProductObjCompute = (params,productOrigin)=>{
 
   // //计算成本率
   let _productCostPercentage = calProductCostPercentage({
-    purprice:params.purchasePrice,
-    amazonprice:productOrigin.amazonSalePrice,
+    purchasePrice:params.purchasePrice,
+    amazonSalePrice:productOrigin.amazonSalePrice,
     currency:productOrigin.currency
   })
   
@@ -246,16 +491,25 @@ const buildProductObjCompute = (params,productOrigin)=>{
 }
 
 const calDHLShippingFee = (params)=>{
-  let weight = parseFloat(params.weight)
-  let length = parseFloat(params.length)
-  let width = parseFloat(params.width)
-  let height = parseFloat(params.height)
+  let dhlShippingFee = 0,dhlfee = 0
+  let weight = parseFloat(params.weight) || 0
+  let length = parseFloat(params.length)|| 0
+  let width = parseFloat(params.width) || 0
+  let height = parseFloat(params.height) || 0
   let fee1 = weight*35
   let fee2 = length*width*height*0.007
-  if(fee1 >= fee2){
-    return fee1
+
+  dhlShippingFee = fee1 > fee2 ? fee1 : fee2
+
+  if(!params.freightFee || params.freightFee === 0){
+    dhlfee = dhlShippingFee
   }else{
-    return fee2
+    dhlfee = params.freightFee
+  }
+
+  return {
+    _dhlShippingFee:dhlShippingFee,
+    _dhlfee:dhlfee
   }
 }
 
@@ -269,24 +523,24 @@ const buildShrinkageParmas = (params,productOrigin) =>{
   }
   return {
     dhlfee:dhlfee,
-    purprice:params.purchasePrice,
-    packfee:productOrigin.packageFee,
-    opfee : productOrigin.opFee,
+    purchasePrice:params.purchasePrice,
+    packageFee:productOrigin.packageFee,
+    opFee : productOrigin.opFee,
     currency: productOrigin.currency,
-    fbafee:productOrigin.fbaFullfillmentFee,
+    fbaFullfillmentFee:productOrigin.fbaFullfillmentFee,
     adcost:productOrigin.adcost
   }
 }
 const calShrinkage = (params) =>{
-  purprice = parseFloat(params.purprice) || 0
+  purchasePrice = parseFloat(params.purchasePrice) || 0
   dhlfee = parseFloat(params.dhlfee) || 0 
-  packfee = parseFloat(params.packfee) || 0
-  opfee = parseFloat(params.opfee) || 0
-  currency = parseFloat(params.currency) || 6.50 
-  fbafee = parseFloat(params.fbafee) || 0
+  packageFee = parseFloat(params.packageFee) || 0
+  opFee = parseFloat(params.opFee) || 0
+  currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
+  fbaFullfillmentFee = parseFloat(params.fbaFullfillmentFee) || 0
   adcost= parseFloat(params.adcost) || 0
-  fee1 = (purprice + dhlfee + packfee + opfee)/currency
-  fee2 = (fee1 + fbafee + adcost)*0.117
+  fee1 = (purchasePrice + dhlfee + packageFee + opFee)/currency
+  fee2 = (fee1 + fbaFullfillmentFee + adcost)*0.117
   return fee2.toFixed(3)
 }
 
@@ -299,44 +553,44 @@ const buildMarginParams = (params,productOrigin,_shrinkage) =>{
   }
   return {
     dhlfee:dhlfee,
-    purprice:params.purchasePrice,
-    amazonprice:params.amazonSalePrice,
+    purchasePrice:params.purchasePrice,
+    amazonSalePrice:params.amazonSalePrice,
 
-    packfee:productOrigin.packageFee,
-    opfee : productOrigin.opFee,
+    packageFee:productOrigin.packageFee,
+    opFee : productOrigin.opFee,
     currency: productOrigin.currency,
-    fbafee:productOrigin.fbaFullfillmentFee,
+    fbaFullfillmentFee:productOrigin.fbaFullfillmentFee,
     adcost:productOrigin.adcost,
-    amazonfee:productOrigin.amazonReferralFee,
-    payonfee :productOrigin.payoneerServiceFee,
+    amazonReferralFee:productOrigin.amazonReferralFee,
+    payoneerServiceFee :productOrigin.payoneerServiceFee,
     
     shrinkage :_shrinkage
   }
 }
 const calMargin = (params) =>{
-  purprice = parseFloat(params.purprice) || 0
+  purchasePrice = parseFloat(params.purchasePrice) || 0
   dhlfee = parseFloat(params.dhlfee) || 0
-  packfee = parseFloat(params.packfee) || 0
-  opfee = parseFloat(params.opfee) || 0
-  currency = parseFloat(params.currency) || 6.50
-  fbafee = parseFloat(params.fbafee) || 0
+  packageFee = parseFloat(params.packageFee) || 0
+  opFee = parseFloat(params.opFee) || 0
+  currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
+  fbaFullfillmentFee = parseFloat(params.fbaFullfillmentFee) || 0
   adcost= parseFloat(params.adcost) || 0
-  amazonfee =parseFloat(params.amazonfee) || 0
-  payonfee = parseFloat(params.payonfee) || 0
-  amazonprice=parseFloat(params.amazonprice) || 0
+  amazonReferralFee =parseFloat(params.amazonReferralFee) || 0
+  payoneerServiceFee = parseFloat(params.payoneerServiceFee) || 0
+  amazonSalePrice=parseFloat(params.amazonSalePrice) || 0
   shrinkage = parseFloat(params.shrinkage) || 0
 
   let fee1,fee2,fee3,_margin,_marginRate
 
-  fee1 = amazonprice*(1-amazonfee/100)
-  fee2 = fbafee+shrinkage+adcost
-  fee3 = (fee1-fee2)*(1-payonfee/100)*currency
-  _margin = (fee3-purprice-dhlfee-packfee-opfee).toFixed(2)
-  if( amazonprice*currency===0){
+  fee1 = amazonSalePrice*(1-amazonReferralFee/100)
+  fee2 = fbaFullfillmentFee+shrinkage+adcost
+  fee3 = (fee1-fee2)*(1-payoneerServiceFee/100)*currency
+  _margin = (fee3-purchasePrice-dhlfee-packageFee-opFee).toFixed(2)
+  if( amazonSalePrice*currency===0){
     _marginRate = 0
   }    
   else{
-    _marginRate = (100*_margin/(amazonprice*currency)).toFixed(2)
+    _marginRate = (100*_margin/(amazonSalePrice*currency)).toFixed(2)
   }    
   return {
     _margin,
@@ -345,14 +599,14 @@ const calMargin = (params) =>{
 }
 
 const calProductCostPercentage = (params)=>{
-  purprice = parseFloat(params.purprice) || 0
-  amazonprice=parseFloat(params.amazonprice) || 0
-  currency = parseFloat(params.currency) || 6.50
-  if (amazonprice*currency==0){
+  purchasePrice = parseFloat(params.purchasePrice) || 0
+  amazonSalePrice=parseFloat(params.amazonSalePrice) || 0
+  currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
+  if (amazonSalePrice*currency==0){
     fee=0
   }
   else{
-    fee = 100*purprice/(amazonprice*currency)
+    fee = 100*purchasePrice/(amazonSalePrice*currency)
   }     
   return fee.toFixed(2)
 }
@@ -361,5 +615,9 @@ module.exports = {
   findProductList,
   findSites,
   findProductById,
-  changeProduct
+  changeProduct,
+  createProduct,
+  findPreoutstockList,
+  copyPreoutstockById,
+  preToOutstockById
 }
