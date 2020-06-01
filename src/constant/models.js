@@ -79,6 +79,8 @@ const DEFAULT_USD_CURRENCY = 6.5
 
 const PREOUTSTOCK_KEYS = ['id','pcode','ptime','pdescription','total_weight','total_volume','total_freightfee','user_id','has_out','products']
 
+const PRODUCT_FOR_PREOUTSTOCK_KEYS = ['id','sku','childAsin','title','site']
+
 module.exports = {
   IMKEYS,
   INSTOCKKEYS,
@@ -86,5 +88,6 @@ module.exports = {
   PRODUCT_PARAMS_MAP,
   PRODUCT_CALC_LIST,
   DEFAULT_USD_CURRENCY,
-  PREOUTSTOCK_KEYS
+  PREOUTSTOCK_KEYS,
+  PRODUCT_FOR_PREOUTSTOCK_KEYS
 }

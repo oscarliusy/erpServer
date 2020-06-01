@@ -76,4 +76,49 @@ router.post('/preoutstock/outstock/:id',async(ctx)=>{
   }
 })
 
+router.post('/preoutstock/detail/:id',async(ctx)=>{ 
+  const data = await productController.findPreoutstockById(ctx.params.id)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/search',async(ctx)=>{
+  const data = await productController.productSearchForPreoutstock(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/calc',async(ctx)=>{
+  const data = await productController.calcPreoutstock(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/edit',async(ctx)=>{
+  const data = await productController.preoutstockEdit(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/preoutstock/add',async(ctx)=>{
+  const data = await productController.preoutstockCreate(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 module.exports = router

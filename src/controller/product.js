@@ -118,6 +118,262 @@ const productDataHandler = (result) => {
   return data
 }
 
+const productSearchForPreoutstock = async(params) =>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const keyword = params.keyword || ''
+
+  let where = {}
+  if(keyword){
+    where = {
+      [Op.or]:[
+        {description:{[Op.like]:'%' + keyword + '%'}},
+        {sku:{[Op.like]:'%' + keyword + '%'}},
+        {childAsin:{[Op.like]:'%' + keyword + '%'}},
+        {title:{[Op.like]:'%' + keyword + '%'}}
+      ]
+    }
+  }
+
+  const result = await models.Login_producttemp.findAndCountAll({
+    order:[['id','ASC']] ,//ASC:正序  DESC:倒序
+    where:where,
+    offset:offset,
+    limit:limited,
+    attributes:['id','sku','childAsin','title'],
+    include:[models.Login_site]
+  })
+
+  let data = product4preoutstockDataHandler(result)
+  
+  return data
+}
+
+const product4preoutstockDataHandler = (result) =>{
+  let data = {}
+  data.total = result.count
+  let PRODUCT_KEYS = CONSTANT.PRODUCT_FOR_PREOUTSTOCK_KEYS
+  data.list = result.rows.map(item =>{
+    let temp = {}
+    PRODUCT_KEYS.forEach(key=>{
+      if(key === 'site'){
+        temp.site = item.Login_site.name
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
+  return data
+}
+
+const findPreoutstockById = async(id)=>{
+  const usersList = await models.Login_user.findAll({
+    attributes:['id','name']
+  })
+
+  const result = await models.Login_preoutstock.findOne({
+    where:{id:id},
+    include:[
+      {
+        model:models.Login_producttemp,
+        attributes:['id','sku']
+      }
+    ]
+  })
+
+  const data = handlePreoutstockData(result)
+  data.usersList = usersList
+  return data
+}
+
+const handlePreoutstockData = (result) =>{
+  let data = JSON.parse(JSON.stringify(result))
+  delete data.Login_producttemps
+  let products = result.Login_producttemps.map(item=>{
+    return {
+      id:item.id,
+      sku:item.sku,
+      amount:item.Login_preoutitem.amount
+    }
+  })
+  data.products = products
+  return data
+}
+
+/**
+ * 1.拿到参数,获取products列表
+ * 2.查询出productObj,配合amount送入calcVolume等三个函数
+ * 3.计算出结果后返回.
+ */
+const calcPreoutstock = async(params) =>{
+  try{
+    const {
+      _total_freightfee,
+      _total_volume,
+      _total_weight
+    } = await calcIndex(params)
+    return {
+      status:'succeed',
+      msg:'已计算并更新参数',
+      indexes:{
+        total_freightfee:_total_freightfee,
+        total_volume:_total_volume,
+        total_weight:_total_weight
+      }
+    }
+  }catch(err){
+    console.log('calcPreoutstock-ERROR:',err)
+    return {
+      status:'failed',
+      msg:'数据错误,计算失败',
+    }
+  }
+  
+}
+
+calcIndex = (params)=>{
+  return new Promise(async(resolve,reject)=>{
+    const productIds = params.products.map(item=>{
+      return item.id
+    })
+  
+    const productList = await models.Login_producttemp.findAll({
+      where:{
+        id:productIds
+      },
+      attributes:['id','dhlShippingFee','freightFee','weight','length','width','height'],
+    })
+  
+    let _total_freightfee = 0,_total_volume = 0,_total_weight=0
+    productList.forEach((productItem,index)=>{
+      let _amount
+      params.products.forEach(paramItem=>{
+        if(paramItem.id === productItem.id) _amount = paramItem.amount
+      })
+      _total_freightfee += Number(calcFreightFee(productItem,_amount))
+      _total_volume += Number(calcVolume(productItem,_amount))
+      _total_weight += Number(calcWeight(productItem,_amount))
+    })
+    resolve({
+      _total_freightfee,
+      _total_volume,
+      _total_weight
+    })
+  })
+}
+
+/**
+ * 1.参数接收
+ * 2.计算3个total
+ * 3.生成params
+ * 4.更新pre对象
+ * 5.删除以前的关联项,变为新的关联项
+ */
+const preoutstockEdit = async(params) => {
+  try{
+    let updateObj = await buildPreoutstockUpdataParams(params)
+    await models.Login_preoutstock.update(updateObj,{
+      where:{
+        id:params.id
+      }
+    })
+    updatePreoutstockItem(params)
+    return {
+      status:'succeed',
+      msg:'成功保存修改'
+    }
+  }
+  catch(err){
+    console.log('preoutstockEdit-ERROR',err)
+    return {
+      status:'failed',
+      msg:'修改失败,出现错误'
+    }
+  }
+}
+
+const preoutstockCreate = async(params)=>{
+  try {
+    let addObj = await buildPreoutstockUpdataParams(params)
+    let preoutstockObj = await models.Login_preoutstock.create(addObj)
+    await createPreoutstockItem(preoutstockObj,params)
+    return {
+      status:'succeed',
+      msg:'已成功创建预出库项'
+    }
+  }
+  catch(err){
+    console.log('preoutstockCreate-ERROR:',err)
+    return {
+      status:'failed',
+      msg:'创建失败'
+    }
+  }
+}
+
+const createPreoutstockItem = async(preoutstockObj,params)=>{
+  const productIds = params.products.map(item=>{
+    return item.id
+  })
+
+  const productList = await models.Login_producttemp.findAll({
+    where:{
+      id:productIds
+    }
+  })
+
+  productList.map((productItem,index)=>{
+    let _amount = 0
+    params.products.forEach(item=>{
+      if(item.id === productItem.id){
+        _amount = item.amount
+      }
+    })
+    preoutstockObj.setLogin_producttemps(productItem,{through:{
+      amount:_amount
+    }})
+  })
+}
+
+const buildPreoutstockUpdataParams = async(params) =>{
+  const {
+    _total_freightfee,
+    _total_volume,
+    _total_weight
+  } = await calcIndex(params)
+  let preUpdateObj = {
+    ...params,
+    ptime:Date.now(),
+    total_freightfee:_total_freightfee,
+    total_volume:_total_volume,
+    total_weight:_total_weight
+  }
+  delete preUpdateObj.id
+  delete preUpdateObj.products
+  
+  return preUpdateObj
+}
+
+const updatePreoutstockItem = async(params) =>{
+  await models.Login_preoutitem.destroy({
+    where:{
+      master_id:params.id
+    }
+  })
+  try{
+    params.products.forEach(item=>{
+      models.Login_preoutitem.create({
+        master_id:params.id,
+        productName_id:item.id,
+        amount:item.amount
+      })
+    })
+  }
+  catch(err){
+    console.log('updatePreoutstockItem-ERROE:',err)
+  }
+}
 const findSites = async()=>{
   const siteMap = await models.Login_site.findAll({
     attributes:['id','name']
@@ -128,11 +384,156 @@ const findSites = async()=>{
 /**
  * 1.获取预出库对象和关联的产品,创建params和list
  * 2.根据params创建出库对象,根据list创建outitem对象关联
- * 3.返回状态码
+ * 3.计算关联物料数量,修改物料数量
+ * 4.返回状态码
  */
 const preToOutstockById = async(id) =>{
-  
+  let status = "failed",msg=""
+  let preoutstockOrigin = await models.Login_preoutstock.findOne({
+    where:{
+      id:id
+    },
+    include:[{
+      model:models.Login_producttemp,
+      attributes:['id','weight','length','width','height','dhlShippingFee','freightFee','site_id']
+    }]
+  })
+
+  const outstockParams = buildOutstockParamsFromPre(preoutstockOrigin)
+  let outstockObj = await models.Login_outstock.create(outstockParams)
+  let res = buildOutItem(outstockObj,preoutstockOrigin)
+
+  await preoutstockOrigin.update({
+    has_out:true
+  })
+
+  return res
 }
+
+const buildOutstockParamsFromPre = (preObj) =>{
+  let _outParams = {}
+  _outParams.code = preObj.pcode
+  _outParams.c_time = Date.now()
+  _outParams.description = preObj.pdescription
+  _outParams.userOutstock_id = preObj.user_id
+  _outParams.total_freightfee = preObj.total_freightfee
+  _outParams.total_volume = preObj.total_volume
+  _outParams.total_weight= preObj.total_weight
+  return _outParams
+}
+
+const buildOutItem = async(outObj,preObj) =>{
+  const productIds = preObj.Login_producttemps.map(item=>{
+    return item.id
+  })
+  //返回一个数组,每个元素是一个对象,放着amount,weight,volume,freightFee
+  const outAttributes = preObj.Login_producttemps.map(item=>{
+    let _volume = calcVolume(item,item.Login_preoutitem.amount)
+    let _weight = calcWeight(item,item.Login_preoutitem.amount)
+    let _freightFee = calcFreightFee(item,item.Login_preoutitem.amount)
+    return {
+      amountOut:item.Login_preoutitem.amount,
+      volume:_volume,
+      weight:_weight,
+      freightfee:_freightFee
+    }
+  })
+
+  const productList = await models.Login_producttemp.findAll({
+    where:{
+      id:productIds
+    },
+    attributes:['id'],
+    include:{
+      model:models.Login_inventorymaterial,
+      attributes:['id']
+    }
+  })
+  //创建outitem关联,这里要加入单票的weight,volume,freightfee
+  productList.forEach((item,index)=>{
+    outObj.setLogin_producttemps(item,
+      {through:
+        {
+          amountOut:outAttributes[index].amountOut,
+          volume:outAttributes[index].volume,
+          weight:outAttributes[index].weight,
+          freightfee:outAttributes[index].freightfee,
+        }
+      })
+  })
+
+  let imRes = imOutStock(productList,outAttributes)
+  return imRes
+}
+
+const calcVolume = (productObj,amount) =>{
+  let _volume = 0
+  let _length = Number(productObj.length)
+  let _width = Number(productObj.width)
+  let _height = Number(productObj.height)
+  let _amount = Number(amount) 
+  if(_length && _width && _height && _amount){
+    _volume =  (_length*_width*_height*_amount)/1000000
+    
+  }else{
+    _volume = 0
+  }
+  //console.log(_length,_width,_height,_amount,_volume)
+  return _volume.toFixed(3)
+}
+
+const calcWeight = (productObj,amount) =>{
+  let _totalWeight = 0
+  let _amount = Number(amount)
+  let _weight = Number(productObj.weight)
+  if(_weight && _amount){
+    _totalWeight = _weight * _amount
+  }else{
+    _totalWeight = 0
+  }
+  return _totalWeight.toFixed(3)
+}
+
+const calcFreightFee = (productObj,amount) =>{
+  let _totalFreightFee = 0
+  let _amount = Number(amount)
+  let _dhlShippingFee = Number(productObj.dhlShippingFee)
+  let _freightFee = Number(productObj.freightFee)
+
+  if(_freightFee){
+    _totalFreightFee = _amount * _freightFee
+  }else if(_dhlShippingFee){
+    _totalFreightFee = _amount * _dhlShippingFee
+  }else{
+    _totalFreightFee = 0 
+  }
+  return _totalFreightFee.toFixed(3)
+}
+
+const imOutStock = (productList,outAttributes) =>{
+  let msg = '',status = 'succeed'
+  productList.forEach(async(productItem,productIndex)=>{
+    let _amountOut = Number(outAttributes[productIndex].amountOut)
+    let IMIds = productItem.Login_inventorymaterials.map(imItem=>{
+      return imItem.id
+    })
+    let IMObjList = await models.Login_inventorymaterial.findAll({
+      where:{
+        id:IMIds
+      },
+      include:[models.Login_productmaterial]
+    })
+    IMObjList.forEach(imObjItem=>{
+      let amountNew = imObjItem.amount - imObjItem.Login_productmaterials.pmAmount * _amountOut
+      if(amountNew < 0) msg = '物料数量已小于0,请及时修改或补充'
+      imObjItem.update({
+        amount:amountNew
+      })
+    })
+  })
+  return {msg,status}
+}
+
 
 /**
  * 1.根据id,获取预出库对象,连带产品项
@@ -619,5 +1020,10 @@ module.exports = {
   createProduct,
   findPreoutstockList,
   copyPreoutstockById,
-  preToOutstockById
+  preToOutstockById,
+  findPreoutstockById,
+  productSearchForPreoutstock,
+  calcPreoutstock,
+  preoutstockEdit,
+  preoutstockCreate
 }
