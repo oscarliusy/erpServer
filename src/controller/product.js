@@ -382,6 +382,153 @@ const findSites = async()=>{
 }
 
 /**
+ * 1.根据products计算outitem的参数和outstock的参数
+ * 2.创建outstock的对象
+ * 3.创建outitem对象
+ * 4.返回状态 
+ */
+const outstockUpload = async(params)=>{
+  const {outstockParams,outItemList} = await buildOutstockParams(params)
+  let outstockObj = await models.Login_outstock.create(outstockParams)
+  const {msg,status} = await buildOutstockItem(outstockObj,outItemList)
+  return {
+    status,
+    msg
+  }
+}
+
+const buildOutstockParams = async(params)=>{
+  let outstockParams={}
+  outstockParams = JSON.parse(JSON.stringify(params))
+  delete outstockParams.products
+  delete outstockParams.authToken
+  const {
+    _total_freightfee,
+    _total_volume,
+    _total_weight,
+    outItemList
+  } = await calcOutstockIndex(params)
+
+  outstockParams.total_freightfee = _total_freightfee
+  outstockParams.total_volume = _total_volume
+  outstockParams.total_weight = _total_weight
+  return {
+    outstockParams,
+    outItemList
+  }
+}
+
+/**
+ * 
+ *
+ */
+const buildOutstockItem = async(outstockObj,outItemList)=>{
+  const productIds = outItemList.map(item=>{
+    return item.productName_id
+  })
+
+  const productList = await models.Login_producttemp.findAll({
+    where:{
+      id:productIds
+    },
+    attributes:['id'],
+    include:{
+      model:models.Login_inventorymaterial,
+      attributes:['id','amount']
+    }
+  })
+
+  productList.forEach((productItem,index)=>{
+    let outitemTemp = {}
+    outItemList.forEach((outItem)=>{
+      if(outItem.productName_id === productItem.id ) outitemTemp = outItem
+    })
+    outstockObj.setLogin_producttemps(productItem,
+      {through:
+        {
+          amountOut:outitemTemp.amountOut,
+          volume:outitemTemp.volume,
+          weight:outitemTemp.weight,
+          freightfee:outitemTemp.freightfee,
+        }
+      })
+  })
+
+  const {msg,status} = await  imOutStockUpload(productList,outItemList)
+
+  //前面测试已通过,剩下一个物料数量扣除,存在一些问题,先不做
+  return {msg,status} 
+}
+
+const calcOutstockIndex = (params)=>{
+  return new Promise(async(resolve,reject)=>{
+    const productSkus = params.products.map(item=>{
+      return item.sku
+    })
+    const productList = await models.Login_producttemp.findAll({
+      where:{
+        sku:productSkus
+      },
+      attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
+    })
+
+    //console.log(productList)
+  
+    let _total_freightfee = 0,_total_volume = 0,_total_weight=0,outItemList=[]
+    productList.forEach((productItem,index)=>{
+      let _amount = 0, temp = {}
+      params.products.forEach(paramItem=>{
+        if(paramItem.sku === productItem.sku) _amount = paramItem.amount
+      })
+      let item_freightfee = Number(calcFreightFee(productItem,_amount))
+      let item_volume = Number(calcVolume(productItem,_amount))
+      let item_weight = Number(calcWeight(productItem,_amount))
+  
+      temp.productName_id = productItem.id
+      temp.amountOut = _amount
+      temp.volume = item_volume
+      temp.freightfee = item_freightfee
+      temp.weight = item_weight
+      outItemList.push(temp)
+  
+      _total_freightfee += item_freightfee
+      _total_volume += item_volume
+      _total_weight += item_weight
+    })
+    resolve({
+      _total_freightfee,
+      _total_volume,
+      _total_weight,
+      outItemList
+    })
+  })
+}
+
+const imOutStockUpload = async(productList,outItemList)=>{
+  let msg = '',status = 'succeed'
+  productList.forEach(async(productItem,productIndex)=>{
+    let _amountOut = 0
+    outItemList.forEach(outItem=>{
+      if(productItem.id === outItem.productName_id) _amountOut = outItem.amountOut
+    })
+
+    //遍历productItem的Login_inventorymaterials,更新其数量即可
+    productItem.Login_inventorymaterials.forEach(imItem=>{
+      let _newAmount = imItem.amount - _amountOut*imItem.Login_productmaterial.pmAmount
+      if(_newAmount < 0) msg = '物料数量已小于0,请及时修改或补充'
+      models.Login_inventorymaterial.update({
+        amount:_newAmount
+      },{
+        where:{
+          id:imItem.id
+        }
+      })
+    })
+  })
+  return {msg,status}
+}
+
+/**
  * 1.获取预出库对象和关联的产品,创建params和list
  * 2.根据params创建出库对象,根据list创建outitem对象关联
  * 3.计算关联物料数量,修改物料数量
@@ -426,12 +573,14 @@ const buildOutItem = async(outObj,preObj) =>{
   const productIds = preObj.Login_producttemps.map(item=>{
     return item.id
   })
+  console.log(preObj.Login_producttemps)
   //返回一个数组,每个元素是一个对象,放着amount,weight,volume,freightFee
   const outAttributes = preObj.Login_producttemps.map(item=>{
     let _volume = calcVolume(item,item.Login_preoutitem.amount)
     let _weight = calcWeight(item,item.Login_preoutitem.amount)
     let _freightFee = calcFreightFee(item,item.Login_preoutitem.amount)
     return {
+      productName_id:item.id,
       amountOut:item.Login_preoutitem.amount,
       volume:_volume,
       weight:_weight,
@@ -446,7 +595,7 @@ const buildOutItem = async(outObj,preObj) =>{
     attributes:['id'],
     include:{
       model:models.Login_inventorymaterial,
-      attributes:['id']
+      attributes:['id','amount']
     }
   })
   //创建outitem关联,这里要加入单票的weight,volume,freightfee
@@ -462,7 +611,7 @@ const buildOutItem = async(outObj,preObj) =>{
       })
   })
 
-  let imRes = imOutStock(productList,outAttributes)
+  let imRes = await imOutStockUpload(productList,outAttributes)
   return imRes
 }
 
@@ -509,31 +658,6 @@ const calcFreightFee = (productObj,amount) =>{
   }
   return _totalFreightFee.toFixed(3)
 }
-
-const imOutStock = (productList,outAttributes) =>{
-  let msg = '',status = 'succeed'
-  productList.forEach(async(productItem,productIndex)=>{
-    let _amountOut = Number(outAttributes[productIndex].amountOut)
-    let IMIds = productItem.Login_inventorymaterials.map(imItem=>{
-      return imItem.id
-    })
-    let IMObjList = await models.Login_inventorymaterial.findAll({
-      where:{
-        id:IMIds
-      },
-      include:[models.Login_productmaterial]
-    })
-    IMObjList.forEach(imObjItem=>{
-      let amountNew = imObjItem.amount - imObjItem.Login_productmaterials.pmAmount * _amountOut
-      if(amountNew < 0) msg = '物料数量已小于0,请及时修改或补充'
-      imObjItem.update({
-        amount:amountNew
-      })
-    })
-  })
-  return {msg,status}
-}
-
 
 /**
  * 1.根据id,获取预出库对象,连带产品项
@@ -750,8 +874,18 @@ const createProductMaterial = async(params,productObj) =>{
     }
   })
 
-  IMObjList.map((item,index)=>{
-    productObj.setLogin_inventorymaterials(item,{through:{pmAmount:params.materials[index].amount}})
+  IMObjList.map((imItem,index)=>{
+    let _amount = 0
+    params.materials.forEach(item=>{
+      if(item.id === imItem.id){
+        _amount = item.amount
+      }
+    })
+    productObj.setLogin_inventorymaterials(imItem,{
+      through:{
+        pmAmount:_amount
+      }
+    })
   })
 }
 const checkSkuRepeat = async(sku) =>{
@@ -1025,5 +1159,6 @@ module.exports = {
   productSearchForPreoutstock,
   calcPreoutstock,
   preoutstockEdit,
-  preoutstockCreate
+  preoutstockCreate,
+  outstockUpload
 }

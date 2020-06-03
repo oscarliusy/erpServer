@@ -121,4 +121,13 @@ router.post('/preoutstock/add',async(ctx)=>{
   }
 })
 
+router.post('/outstock/upload',async(ctx)=>{
+  const data = await productController.outstockUpload(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 module.exports = router
