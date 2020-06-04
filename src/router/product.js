@@ -130,4 +130,21 @@ router.post('/outstock/upload',async(ctx)=>{
   }
 })
 
+router.post('/outstocklog',async(ctx)=>{
+  const data = await productController.findOutstockLog(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+router.post('/outstock/detail',async(ctx)=>{
+  const data = await productController.findOutstockDetailById(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 module.exports = router

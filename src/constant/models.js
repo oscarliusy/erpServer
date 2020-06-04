@@ -81,6 +81,10 @@ const PREOUTSTOCK_KEYS = ['id','pcode','ptime','pdescription','total_weight','to
 
 const PRODUCT_FOR_PREOUTSTOCK_KEYS = ['id','sku','childAsin','title','site']
 
+const OUTSTOCKKEYS = ['id','code','c_time','description','total_weight','total_volume','total_freightfee','userOutstock_id']
+
+const OUTSTOCK_DETAIL_KEYS = ['site','sku','amount']
+
 module.exports = {
   IMKEYS,
   INSTOCKKEYS,
@@ -89,5 +93,7 @@ module.exports = {
   PRODUCT_CALC_LIST,
   DEFAULT_USD_CURRENCY,
   PREOUTSTOCK_KEYS,
-  PRODUCT_FOR_PREOUTSTOCK_KEYS
+  PRODUCT_FOR_PREOUTSTOCK_KEYS,
+  OUTSTOCKKEYS,
+  OUTSTOCK_DETAIL_KEYS
 }

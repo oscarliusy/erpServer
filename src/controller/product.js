@@ -55,6 +55,85 @@ const findPreoutstockList = async(params) =>{
   return data
 }
 
+const findOutstockLog = async(params)=>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+
+  const result = await models.Login_outstock.findAndCountAll({
+    order:[['id','DESC']] ,//ASC:正序  DESC:倒序
+    offset:offset,
+    limit:limited,
+    include:[{
+      model:models.Login_user,
+      attributes:['name']
+    }]
+  })
+  let data = OutstockDataHandler(result)
+  return data
+}
+
+const OutstockDataHandler = (result)=>{
+  let data = {}
+  let outstockKeys = CONSTANT.OUTSTOCKKEYS
+  data.total = result.count
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    outstockKeys.forEach(key=>{
+      if(key === 'userOutstock_id'){
+        temp.user = item.Login_user.name
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
+  return data
+}
+
+const findOutstockDetailById = async(params)=>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const result = await models.Login_outitem.findAndCountAll({
+    where:{
+      master_id:params.id
+    },
+    order:[['amountOut','DESC']] ,//ASC:正序  DESC:倒序
+    offset:offset,
+    limit:limited,
+    attributes:['amountOut'],
+    include:[{
+      model:models.Login_producttemp,
+      attributes:['sku','site_id']
+    }]
+  })
+
+  const data = outstockDetailDataHandler(result)
+
+  return data
+}
+
+const outstockDetailDataHandler = async(result)=>{
+  let data = {}
+  const siteMap = await models.Login_site.findAll({
+    attributes:['id','name']
+  })
+  let outstockKeys = CONSTANT.OUTSTOCK_DETAIL_KEYS
+  data.total = result.count
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    outstockKeys.forEach(key=>{
+      if(key === 'amount'){
+        temp[key] = item.amountOut
+      }else if(key === 'site'){
+        temp[key] = getSiteName(siteMap,item.Login_producttemp.site_id)
+      }else if(key === 'sku'){
+        temp[key] = item.Login_producttemp[key]
+      }
+    })
+    return temp
+  })
+  return data
+}
 const preoutstockDataHandler = (result) =>{
   let data = {}
   let preOutstockKeys = CONSTANT.PREOUTSTOCK_KEYS
@@ -232,7 +311,7 @@ const calcPreoutstock = async(params) =>{
   
 }
 
-calcIndex = (params)=>{
+const calcIndex = (params)=>{
   return new Promise(async(resolve,reject)=>{
     const productIds = params.products.map(item=>{
       return item.id
@@ -450,6 +529,7 @@ const buildOutstockItem = async(outstockObj,outItemList)=>{
           volume:outitemTemp.volume,
           weight:outitemTemp.weight,
           freightfee:outitemTemp.freightfee,
+          site:outitemTemp.site
         }
       })
   })
@@ -476,9 +556,12 @@ const calcOutstockIndex = (params)=>{
   
     let _total_freightfee = 0,_total_volume = 0,_total_weight=0,outItemList=[]
     productList.forEach((productItem,index)=>{
-      let _amount = 0, temp = {}
+      let _amount = 0, temp = {},_site=''
       params.products.forEach(paramItem=>{
-        if(paramItem.sku === productItem.sku) _amount = paramItem.amount
+        if(paramItem.sku === productItem.sku) {
+          _amount = paramItem.amount
+          _site = paramItem.site
+        }
       })
       let item_freightfee = Number(calcFreightFee(productItem,_amount))
       let item_volume = Number(calcVolume(productItem,_amount))
@@ -489,6 +572,7 @@ const calcOutstockIndex = (params)=>{
       temp.volume = item_volume
       temp.freightfee = item_freightfee
       temp.weight = item_weight
+      temp.site = _site
       outItemList.push(temp)
   
       _total_freightfee += item_freightfee
@@ -573,18 +657,25 @@ const buildOutItem = async(outObj,preObj) =>{
   const productIds = preObj.Login_producttemps.map(item=>{
     return item.id
   })
-  console.log(preObj.Login_producttemps)
+
+  const siteMap = await models.Login_site.findAll({
+    attributes:['id','name']
+  })
+
+  //console.log(preObj.Login_producttemps)
   //返回一个数组,每个元素是一个对象,放着amount,weight,volume,freightFee
-  const outAttributes = preObj.Login_producttemps.map(item=>{
+  const outAttributes = preObj.Login_producttemps.map((item)=>{
     let _volume = calcVolume(item,item.Login_preoutitem.amount)
     let _weight = calcWeight(item,item.Login_preoutitem.amount)
     let _freightFee = calcFreightFee(item,item.Login_preoutitem.amount)
+    let _site = getSiteName(siteMap,item.site_id)
     return {
       productName_id:item.id,
       amountOut:item.Login_preoutitem.amount,
       volume:_volume,
       weight:_weight,
-      freightfee:_freightFee
+      freightfee:_freightFee,
+      site:_site
     }
   })
 
@@ -600,19 +691,35 @@ const buildOutItem = async(outObj,preObj) =>{
   })
   //创建outitem关联,这里要加入单票的weight,volume,freightfee
   productList.forEach((item,index)=>{
+    let temp = {}
+    outAttributes.forEach(outItem=>{
+      if(item.id === outItem.productName_id) temp = outItem
+    })
+  
     outObj.setLogin_producttemps(item,
       {through:
         {
-          amountOut:outAttributes[index].amountOut,
-          volume:outAttributes[index].volume,
-          weight:outAttributes[index].weight,
-          freightfee:outAttributes[index].freightfee,
+          amountOut:temp.amountOut,
+          volume:temp.volume,
+          weight:temp.weight,
+          freightfee:temp.freightfee,
+          site:temp.site
         }
       })
   })
 
   let imRes = await imOutStockUpload(productList,outAttributes)
   return imRes
+}
+
+const getSiteName = (siteMap,site_id)=>{
+  let siteName = ''
+  for(let site of siteMap){
+    if(site.id === site_id){
+      siteName = site.name
+    }
+  }
+  return siteName
 }
 
 const calcVolume = (productObj,amount) =>{
@@ -1160,5 +1267,7 @@ module.exports = {
   calcPreoutstock,
   preoutstockEdit,
   preoutstockCreate,
-  outstockUpload
+  outstockUpload,
+  findOutstockLog,
+  findOutstockDetailById
 }
