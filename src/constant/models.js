@@ -1,12 +1,12 @@
 const IMKEYS = ['id','uniqueId','description','amount','price','userPurchase_id','image']
 const INSTOCKKEYS = ['id','c_time','userInstock_id','description']
 const PRODUCTKEYS = [
-  'id','site','sku','childAsin','title','description','image',
+  'id','sku','childAsin','title','description','image','site',
   'creator','c_time','purchasePrice','weight',
   'length','width','height','volumeWeight','packageFee','opFee',
-  'currency','fbaFullfillmentFee','amazonReferralFee','payoneerServiceFee',
+  'fbaFullfillmentFee','amazonReferralFee','payoneerServiceFee',
   'amazonSalePrice','adcost','dhlShippingFee','shrinkage',
-  'margin','marginRate','productCostPercentage','freightFee','materials']
+  'margin','marginRate','productCostPercentage','freightFee','materials']//这里删去了currency,而是从site获取
 
 const PRODUCT_CALC_LIST = ['purchasePrice','packageFee','opFee',
 'fbaFullfillmentFee','amazonReferralFee','payoneerServiceFee',

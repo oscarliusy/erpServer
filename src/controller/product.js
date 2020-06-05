@@ -160,18 +160,41 @@ const preoutstockDataHandler = (result) =>{
   return data
 }
 
+const buildCurrencyMap = async()=>{
+  const result = await models.Login_site.findAndCountAll({
+    include:[{
+      model:models.Currency
+    }]
+  })
+  const siteCurrencyMap = siteCurrencyDataHandler(result)
+  return siteCurrencyMap
+}
+
+const siteCurrencyDataHandler = (result) =>{
+  let data = {}
+  result.rows.forEach(item=>{
+    data[item.name] = {}
+    data[item.name]['currencyName'] = item.Currency.name
+    data[item.name]['exchangeRate'] = item.Currency.exchangeRateRMB
+   })
+  return data
+}
 /**
  * 需要在前6位显示id,site,sku,childAsin,title,image,后面随意
  */
-const productDataHandler = (result) => {
+const productDataHandler = async(result) => {
   let data = {}
   let PRODUCT_KEYS = CONSTANT.PRODUCTKEYS
+  let currencyMap = await buildCurrencyMap()
+
   data.total = result.count
   data.list = result.rows.map(item=>{
     let temp = {}
     PRODUCT_KEYS.forEach(key=>{
       if(key === 'site'){
         temp.site = item.Login_site.name
+        temp.currency = currencyMap[item.Login_site.name].currencyName
+        temp.exchangeRate = currencyMap[item.Login_site.name].exchangeRate
       }
       else if(key === 'creator'){
         temp.creator = item.Login_user.name
@@ -888,7 +911,7 @@ const changeProduct = async(params)=>{
 }
 
 const updateCalcProduct = async(params,productOrigin) =>{
-  let productObj = buildProductObjCompute(params,productOrigin)
+  let productObj = await buildProductObjCompute(params,productOrigin)
   //console.log('obj',productObj)
   try{
     await models.Login_producttemp.update(productObj,{
@@ -940,6 +963,9 @@ const createProduct = async(params)=>{
   let status = ""
   
   if(!IsSkuRepeat){
+    const currencyExchangeRate = await getExchangeRateBySiteId(params.site_id)
+    params.currency = currencyExchangeRate
+  
     const formatParams = productParamsFormat(params)
     const hasAllComputeAttributes = checkComputeAttribute(formatParams)
   
@@ -1041,7 +1067,7 @@ const createProductWithCompute = async(params) =>{
   let {_dhlfee,_dhlShippingFee} = calDHLShippingFee(params)
   let _shrinkage = calShrinkage({
     ...params,
-    dhlfee:_dhlfee
+    dhlfee:_dhlfee,
   })
   let {_margin,_marginRate} = calMargin({
     ...params,
@@ -1075,16 +1101,16 @@ const createProductWithoutCompute = async(params) =>{
 
 
 
-//检查purchasePrice,freightFee,amazonSalePrice三项是否修改
+//检查purchasePrice,freightFee,amazonSalePrice,site四项是否修改
 const checkProductParams = (params,productOrigin)=>{
   return !(params.purchasePrice === productOrigin.purchasePrice  
           && params.freightFee === productOrigin.freightFee 
-          && params.amazonSalePrice === productOrigin.amazonSalePrice)
+          && params.amazonSalePrice === productOrigin.amazonSalePrice
+          && params.site_id === productOrigin.site_id)
 }
 
 const buildProductObjWithoutCompute = (params) =>{
   return {
-    site_id:params.site_id,
     sku:params.sku,
     childAsin:params.childAsin,
     title:params.title,
@@ -1092,26 +1118,37 @@ const buildProductObjWithoutCompute = (params) =>{
   }
 }
 
+const getExchangeRateBySiteId = async(site_id)=>{
+  let siteObj = await models.Login_site.findOne({
+    where:{
+      id:site_id
+    },
+    include:[models.Currency]
+  }) 
+  return siteObj.Currency.exchangeRateRMB
+}
 /*
 * 1.拿到了新数据和原始数据
 * 2.取出相关数据做运算
 * 3.打好包返回给更新函数
 */
 
-const buildProductObjCompute = (params,productOrigin)=>{
+const buildProductObjCompute = async(params,productOrigin)=>{
+  const currencyExchangeRate = await getExchangeRateBySiteId(params.site_id) 
+
   //计算损耗
-  let shrinkageParmas = buildShrinkageParmas(params,productOrigin)
+  let shrinkageParmas = buildShrinkageParmas(params,productOrigin,currencyExchangeRate)
   let _shrinkage = calShrinkage(shrinkageParmas)
 
   //计算利润和利润率
-  let marginParams = buildMarginParams(params,productOrigin,_shrinkage)
+  let marginParams = buildMarginParams(params,productOrigin,_shrinkage,currencyExchangeRate)
   let {_margin,_marginRate} = calMargin(marginParams)
 
   // //计算成本率
   let _productCostPercentage = calProductCostPercentage({
     purchasePrice:params.purchasePrice,
     amazonSalePrice:productOrigin.amazonSalePrice,
-    currency:productOrigin.currency
+    currency:currencyExchangeRate
   })
   
   return {
@@ -1128,7 +1165,8 @@ const buildProductObjCompute = (params,productOrigin)=>{
     shrinkage:_shrinkage,
     margin:_margin,
     marginRate:_marginRate,
-    productCostPercentage:_productCostPercentage
+    productCostPercentage:_productCostPercentage,
+    currency:currencyExchangeRate
   }
 }
 
@@ -1156,7 +1194,7 @@ const calDHLShippingFee = (params)=>{
 }
 
 //存在freightFee就用,不存在就用dhlShippingFee
-const buildShrinkageParmas = (params,productOrigin) =>{
+const buildShrinkageParmas = (params,productOrigin,currencyExchangeRate) =>{
   let dhlfee = 0
   if(Number(params.freightFee)){
     dhlfee = params.freightFee
@@ -1168,7 +1206,7 @@ const buildShrinkageParmas = (params,productOrigin) =>{
     purchasePrice:params.purchasePrice,
     packageFee:productOrigin.packageFee,
     opFee : productOrigin.opFee,
-    currency: productOrigin.currency,
+    currency: currencyExchangeRate,
     fbaFullfillmentFee:productOrigin.fbaFullfillmentFee,
     adcost:productOrigin.adcost
   }
@@ -1186,7 +1224,7 @@ const calShrinkage = (params) =>{
   return fee2.toFixed(3)
 }
 
-const buildMarginParams = (params,productOrigin,_shrinkage) =>{
+const buildMarginParams = (params,productOrigin,_shrinkage,currencyExchangeRate) =>{
   let dhlfee = 0
   if(Number(params.freightFee)){
     dhlfee = params.freightFee
@@ -1200,7 +1238,7 @@ const buildMarginParams = (params,productOrigin,_shrinkage) =>{
 
     packageFee:productOrigin.packageFee,
     opFee : productOrigin.opFee,
-    currency: productOrigin.currency,
+    currency: currencyExchangeRate,
     fbaFullfillmentFee:productOrigin.fbaFullfillmentFee,
     adcost:productOrigin.adcost,
     amazonReferralFee:productOrigin.amazonReferralFee,
