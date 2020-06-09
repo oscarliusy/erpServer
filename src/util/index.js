@@ -1,4 +1,5 @@
 const Fs = require('fs')
+const bcrypt = require('bcryptjs')
 
 //用于获取某个模块下各子模块的模块名
 const getModules = (dir) => {
@@ -23,7 +24,14 @@ const mkDir = (path) => {
   })
 }
 
+const generateHashPassword = (password)=> {
+  var salt = bcrypt.genSaltSync(10)
+  var hash = bcrypt.hashSync(password, salt)
+  return hash;
+}
+
 module.exports = {
   getModules,
-  mkDir
+  mkDir,
+  generateHashPassword
 }

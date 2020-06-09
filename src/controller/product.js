@@ -503,7 +503,7 @@ const buildOutstockParams = async(params)=>{
   let outstockParams={}
   outstockParams = JSON.parse(JSON.stringify(params))
   delete outstockParams.products
-  delete outstockParams.authToken
+  //delete outstockParams.authToken
   const {
     _total_freightfee,
     _total_volume,
@@ -1032,7 +1032,7 @@ const checkSkuRepeat = async(sku) =>{
 
 //遍历attribute-type的字典,对params做数据类型转换和默认值写入.
 const productParamsFormat = (params) =>{
-  delete params.authToken
+  //delete params.authToken
   for(let key in CONSTANT.PRODUCT_PARAMS_MAP){
     let type = CONSTANT.PRODUCT_PARAMS_MAP[key].type     
       let value = params[key] || CONSTANT.PRODUCT_PARAMS_MAP[key].default

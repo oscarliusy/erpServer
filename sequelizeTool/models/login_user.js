@@ -4,8 +4,7 @@ module.exports = (sequelize, DataTypes) => {
     name: DataTypes.STRING(128),
     password: DataTypes.STRING(256),
     email:DataTypes.STRING(254),
-    sex:DataTypes.STRING(32),
-    c_time:DataTypes.DATE
+    authority_id:DataTypes.INTEGER(11)
   }, {});
   Login_user.associate = function(models) {
     //定义一对多关系
@@ -23,6 +22,9 @@ module.exports = (sequelize, DataTypes) => {
     })
     models.Login_user.hasMany(models.Login_outstock,{
       foreignKey:"userOutstock_id"
+    })
+    models.Login_user.belongsTo(models.Authority,{
+      foreignKey:"authority_id"
     })
   }
   return Login_user

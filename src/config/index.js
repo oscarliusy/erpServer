@@ -1,7 +1,9 @@
 
 const config = {
   debug:{
-    server_port:8000
+    server_port:8000,
+    secretOrKey:"tokenSecret",
+    tokenExpireTime:60*60*24*7 //一周
   }
 }
 
