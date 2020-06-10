@@ -19,12 +19,12 @@ const findInventoryMaterialList = async(params) =>{
     }
   }
 
-  const result = await models.Login_inventorymaterial.findAndCountAll({
+  const result = await models.Inventorymaterial.findAndCountAll({
     order:[['amount',sort]] ,//ASC:正序  DESC:倒序
     where:where,
     offset:offset,
     limit:limited,
-    include:[models.Login_user]
+    include:[models.User]
   })
 
   let data = IMDataHandler(result)
@@ -47,7 +47,7 @@ const findIMListForInstork= async(params) =>{
     }
   }
 
-  const result = await models.Login_inventorymaterial.findAndCountAll({
+  const result = await models.Inventorymaterial.findAndCountAll({
     where:where,
     offset:offset,
     limit:limited,
@@ -60,10 +60,10 @@ const findIMListForInstork= async(params) =>{
 }
 
 const findInventoryMaterialById = async(id)=>{
-  const usersList = await models.Login_user.findAll({
+  const usersList = await models.User.findAll({
     attributes:['id','name']
   })
-  const result = await models.Login_inventorymaterial.findOne({
+  const result = await models.Inventorymaterial.findOne({
     where:{id:id}
   })
   let data = JSON.parse(JSON.stringify(result))
@@ -73,7 +73,7 @@ const findInventoryMaterialById = async(id)=>{
 
 const changeInventoryMaterial = async(params)=>{
   let IMObj = buildImObj(params)
-  await models.Login_inventorymaterial.update(IMObj,{
+  await models.Inventorymaterial.update(IMObj,{
     where:{
       id:params.id
     }
@@ -93,7 +93,7 @@ const changeInventoryMaterial = async(params)=>{
   */
 const addInventoryMaterial = async(params)=>{
   let IMObj = buildImObj(params)
-  let checkRes = await models.Login_inventorymaterial.count({
+  let checkRes = await models.Inventorymaterial.count({
     where:{
       uniqueId:IMObj.uniqueId
     }
@@ -105,7 +105,7 @@ const addInventoryMaterial = async(params)=>{
       msg:'uniqueId已存在,请重新命名',
     }
   }else{
-    let addRes = await models.Login_inventorymaterial.create(IMObj)
+    let addRes = await models.Inventorymaterial.create(IMObj)
     return {
       type:'success',
       msg:'已成功新增',
@@ -135,7 +135,7 @@ const createInstock = async(params) =>{
     return item.uniqueId
   })
 
-  const IMObjList = await models.Login_inventorymaterial.findAll({
+  const IMObjList = await models.Inventorymaterial.findAll({
     where:{
       uniqueId:IMuniqueIds
     }
@@ -151,7 +151,7 @@ const createInstock = async(params) =>{
   })
 
   //创建入库对象
-  const instockObj = await models.Login_instock.create({
+  const instockObj = await models.Instock.create({
     code:params.code,
     description: params.description,
     c_time:params.createAt,
@@ -160,7 +160,7 @@ const createInstock = async(params) =>{
 
   //创建关联initem对象
   IMObjList.map((item,index)=>{
-    instockObj.setLogin_inventorymaterials(item,{through:{amountIn:params.data.dataSource[index].instockAmount}})
+    instockObj.setInventorymaterials(item,{through:{amountIn:params.data.dataSource[index].instockAmount}})
   })
 }
 
@@ -173,7 +173,7 @@ const createInstock = async(params) =>{
 const findInstockDetail = async(params)=>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
-  const result = await models.Login_initem.findAndCountAll({
+  const result = await models.Initem.findAndCountAll({
     where:{
       master_id:params.id
     },
@@ -182,7 +182,7 @@ const findInstockDetail = async(params)=>{
     limit:limited,
     attributes:['amountIn'],
     include:[{
-      model:models.Login_inventorymaterial,
+      model:models.Inventorymaterial,
       attributes:['uniqueId']
     }],
   })
@@ -196,7 +196,7 @@ const instockDetailDataHandler = async(result)=>{
   data.total = result.count
   data.list = result.rows.map(item=>{
     let temp = {}
-    temp.uniqueId = item.Login_inventorymaterial.uniqueId
+    temp.uniqueId = item.Inventorymaterial.uniqueId
     temp.amount = item.amountIn
     return temp
   })
@@ -208,18 +208,18 @@ const findInstockList = async(params)=>{
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
 
-  const result = await models.Login_instock.findAndCountAll({
+  const result = await models.Instock.findAndCountAll({
     order:[['id','DESC']] ,//ASC:正序  DESC:倒序
     offset:offset,
     limit:limited,
-    include:[models.Login_user]
+    include:[models.User]
   })
   let data = InstockDataHandler(result)
   return data
 }
 
 const findPurchasers = async()=>{
-  const usersList = await models.Login_user.findAll({
+  const usersList = await models.User.findAll({
     attributes:['id','name']
   })
   return usersList
@@ -233,7 +233,7 @@ const InstockDataHandler = (result)=>{
     let temp = {}
     instockKeys.forEach(key=>{
       if(key === 'userInstock_id'){
-        temp.user = item.Login_user.name
+        temp.user = item.User.name
       }else{
         temp[key] = item[key]
       }
@@ -242,7 +242,7 @@ const InstockDataHandler = (result)=>{
   })
   return data
 }
-//处理inventorymaterial的数据,按新的顺序包装一下,将外键查询的Login_user放进来
+//处理inventorymaterial的数据,按新的顺序包装一下,将外键查询的User放进来
 const IMDataHandler = (result) => {
   let data = {}
   let inventoryMaterialKeys = CONSTANT.IMKEYS
@@ -251,7 +251,7 @@ const IMDataHandler = (result) => {
     let temp = {}
     inventoryMaterialKeys.forEach(key=>{
       if(key === 'userPurchase_id'){
-        temp.purchaser = item.Login_user.name
+        temp.purchaser = item.User.name
       }else{
         temp[key] = item[key]
       }

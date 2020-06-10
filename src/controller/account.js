@@ -7,7 +7,7 @@ const config = require('../config')
 const jwt = require("jsonwebtoken")
 
 const findAccountList = async()=>{
-  const result = await models.Login_user.findAndCountAll({
+  const result = await models.User.findAndCountAll({
     include:[{
       model:models.Authority,
       attributes:['code']
@@ -18,7 +18,7 @@ const findAccountList = async()=>{
 }
 
 const register = async(params)=>{
-  const findResult = await models.Login_user.findAndCountAll({
+  const findResult = await models.User.findAndCountAll({
     where:{
       email:params.email
     }
@@ -43,7 +43,7 @@ const createUser = async(params)=>{
       code:params.authority
     }
   })
-  await models.Login_user.create({
+  await models.User.create({
     name:params.name,
     password:hashPW,
     email:params.email,
@@ -54,7 +54,7 @@ const createUser = async(params)=>{
 const signIn = async(params) =>{
   //console.log(params)
   let status = '',msg='', pwComparedResult
-  const findResult = await models.Login_user.findAndCountAll({
+  const findResult = await models.User.findAndCountAll({
     where:{
       email:params.email
     },
@@ -105,7 +105,7 @@ const signIn = async(params) =>{
  */
 const editProfile = async(params)=>{
   let status = '',msg='', pwComparedResult
-  const findResult = await models.Login_user.findAndCountAll({
+  const findResult = await models.User.findAndCountAll({
     where:{
       email:params.email
     }
@@ -125,7 +125,7 @@ const editProfile = async(params)=>{
         name:params.new_username,
         password:hashPW
       }
-      await models.Login_user.update(updatePayloadWithPw,{
+      await models.User.update(updatePayloadWithPw,{
         where:{
           email:params.email
         }
@@ -139,7 +139,7 @@ const editProfile = async(params)=>{
         email:params.new_email,
         name:params.new_username
       }
-      await models.Login_user.update(updatePayload,{
+      await models.User.update(updatePayload,{
         where:{
           email:params.email
         }

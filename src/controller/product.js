@@ -20,12 +20,12 @@ const findProductList = async(params) =>{
     }
   }
 
-  const result = await models.Login_producttemp.findAndCountAll({
+  const result = await models.Producttemp.findAndCountAll({
     //order:[['id','DESC']] ,//ASC:正序  DESC:倒序
     where:where,
     offset:offset,
     limit:limited,
-    include:[models.Login_user,models.Login_site,models.Login_inventorymaterial]
+    include:[models.User,models.Site,models.Inventorymaterial]
   })
 
   let data = productDataHandler(result)
@@ -36,16 +36,16 @@ const findPreoutstockList = async(params) =>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
 
-  const result = await models.Login_preoutstock.findAndCountAll({
+  const result = await models.Preoutstock.findAndCountAll({
     order:[['id','DESC']] ,//ASC:正序  DESC:倒序
     offset:offset,
     limit:limited,
     include:[{
-      model:models.Login_user,
+      model:models.User,
       attributes:['name']
     }
     ,{
-      model:models.Login_producttemp,
+      model:models.Producttemp,
       attributes:['sku']
     }
   ]
@@ -59,12 +59,12 @@ const findOutstockLog = async(params)=>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
 
-  const result = await models.Login_outstock.findAndCountAll({
+  const result = await models.Outstock.findAndCountAll({
     order:[['id','DESC']] ,//ASC:正序  DESC:倒序
     offset:offset,
     limit:limited,
     include:[{
-      model:models.Login_user,
+      model:models.User,
       attributes:['name']
     }]
   })
@@ -80,7 +80,7 @@ const OutstockDataHandler = (result)=>{
     let temp = {}
     outstockKeys.forEach(key=>{
       if(key === 'userOutstock_id'){
-        temp.user = item.Login_user.name
+        temp.user = item.User.name
       }else{
         temp[key] = item[key]
       }
@@ -93,7 +93,7 @@ const OutstockDataHandler = (result)=>{
 const findOutstockDetailById = async(params)=>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
-  const result = await models.Login_outitem.findAndCountAll({
+  const result = await models.Outitem.findAndCountAll({
     where:{
       master_id:params.id
     },
@@ -102,7 +102,7 @@ const findOutstockDetailById = async(params)=>{
     limit:limited,
     attributes:['amountOut'],
     include:[{
-      model:models.Login_producttemp,
+      model:models.Producttemp,
       attributes:['sku','site_id']
     }]
   })
@@ -114,7 +114,7 @@ const findOutstockDetailById = async(params)=>{
 
 const outstockDetailDataHandler = async(result)=>{
   let data = {}
-  const siteMap = await models.Login_site.findAll({
+  const siteMap = await models.Site.findAll({
     attributes:['id','name']
   })
   let outstockKeys = CONSTANT.OUTSTOCK_DETAIL_KEYS
@@ -125,9 +125,9 @@ const outstockDetailDataHandler = async(result)=>{
       if(key === 'amount'){
         temp[key] = item.amountOut
       }else if(key === 'site'){
-        temp[key] = getSiteName(siteMap,item.Login_producttemp.site_id)
+        temp[key] = getSiteName(siteMap,item.Producttemp.site_id)
       }else if(key === 'sku'){
-        temp[key] = item.Login_producttemp[key]
+        temp[key] = item.Producttemp[key]
       }
     })
     return temp
@@ -142,12 +142,12 @@ const preoutstockDataHandler = (result) =>{
     let temp = {}
     preOutstockKeys.forEach(key=>{
       if(key === 'user_id'){
-        temp.user = item.Login_user.name
+        temp.user = item.User.name
       }else if(key === 'products'){
-        let _products = item.Login_producttemps.map(proItem=>{
+        let _products = item.Producttemps.map(proItem=>{
           return {
             sku:proItem.sku,
-            amount:proItem.Login_preoutitem.amount
+            amount:proItem.Preoutitem.amount
           }
         })
         temp.products = _products
@@ -161,7 +161,7 @@ const preoutstockDataHandler = (result) =>{
 }
 
 const buildCurrencyMap = async()=>{
-  const result = await models.Login_site.findAndCountAll({
+  const result = await models.Site.findAndCountAll({
     include:[{
       model:models.Currency
     }]
@@ -192,20 +192,20 @@ const productDataHandler = async(result) => {
     let temp = {}
     PRODUCT_KEYS.forEach(key=>{
       if(key === 'site'){
-        temp.site = item.Login_site.name
-        temp.currency = currencyMap[item.Login_site.name].currencyName
-        temp.exchangeRate = currencyMap[item.Login_site.name].exchangeRate
+        temp.site = item.Site.name
+        temp.currency = currencyMap[item.Site.name].currencyName
+        temp.exchangeRate = currencyMap[item.Site.name].exchangeRate
       }
       else if(key === 'creator'){
-        temp.creator = item.Login_user.name
+        temp.creator = item.User.name
       }
       else if(key == "materials"){
         let materialList = []
-        if(item.Login_inventorymaterials.length){
-          materialList = item.Login_inventorymaterials.map(imItem=>{
+        if(item.Inventorymaterials.length){
+          materialList = item.Inventorymaterials.map(imItem=>{
             let matItem = {}
             matItem.name = imItem.uniqueId || ''
-            matItem.amount = imItem.Login_productmaterial.pmAmount || ''
+            matItem.amount = imItem.Productmaterial.pmAmount || ''
             return matItem
           })
         }
@@ -237,13 +237,13 @@ const productSearchForPreoutstock = async(params) =>{
     }
   }
 
-  const result = await models.Login_producttemp.findAndCountAll({
+  const result = await models.Producttemp.findAndCountAll({
     order:[['id','ASC']] ,//ASC:正序  DESC:倒序
     where:where,
     offset:offset,
     limit:limited,
     attributes:['id','sku','childAsin','title'],
-    include:[models.Login_site]
+    include:[models.Site]
   })
 
   let data = product4preoutstockDataHandler(result)
@@ -259,7 +259,7 @@ const product4preoutstockDataHandler = (result) =>{
     let temp = {}
     PRODUCT_KEYS.forEach(key=>{
       if(key === 'site'){
-        temp.site = item.Login_site.name
+        temp.site = item.Site.name
       }else{
         temp[key] = item[key]
       }
@@ -270,15 +270,15 @@ const product4preoutstockDataHandler = (result) =>{
 }
 
 const findPreoutstockById = async(id)=>{
-  const usersList = await models.Login_user.findAll({
+  const usersList = await models.User.findAll({
     attributes:['id','name']
   })
 
-  const result = await models.Login_preoutstock.findOne({
+  const result = await models.Preoutstock.findOne({
     where:{id:id},
     include:[
       {
-        model:models.Login_producttemp,
+        model:models.Producttemp,
         attributes:['id','sku']
       }
     ]
@@ -291,12 +291,12 @@ const findPreoutstockById = async(id)=>{
 
 const handlePreoutstockData = (result) =>{
   let data = JSON.parse(JSON.stringify(result))
-  delete data.Login_producttemps
-  let products = result.Login_producttemps.map(item=>{
+  delete data.Producttemps
+  let products = result.Producttemps.map(item=>{
     return {
       id:item.id,
       sku:item.sku,
-      amount:item.Login_preoutitem.amount
+      amount:item.Preoutitem.amount
     }
   })
   data.products = products
@@ -340,7 +340,7 @@ const calcIndex = (params)=>{
       return item.id
     })
   
-    const productList = await models.Login_producttemp.findAll({
+    const productList = await models.Producttemp.findAll({
       where:{
         id:productIds
       },
@@ -375,7 +375,7 @@ const calcIndex = (params)=>{
 const preoutstockEdit = async(params) => {
   try{
     let updateObj = await buildPreoutstockUpdataParams(params)
-    await models.Login_preoutstock.update(updateObj,{
+    await models.Preoutstock.update(updateObj,{
       where:{
         id:params.id
       }
@@ -398,7 +398,7 @@ const preoutstockEdit = async(params) => {
 const preoutstockCreate = async(params)=>{
   try {
     let addObj = await buildPreoutstockUpdataParams(params)
-    let preoutstockObj = await models.Login_preoutstock.create(addObj)
+    let preoutstockObj = await models.Preoutstock.create(addObj)
     await createPreoutstockItem(preoutstockObj,params)
     return {
       status:'succeed',
@@ -419,7 +419,7 @@ const createPreoutstockItem = async(preoutstockObj,params)=>{
     return item.id
   })
 
-  const productList = await models.Login_producttemp.findAll({
+  const productList = await models.Producttemp.findAll({
     where:{
       id:productIds
     }
@@ -432,7 +432,7 @@ const createPreoutstockItem = async(preoutstockObj,params)=>{
         _amount = item.amount
       }
     })
-    preoutstockObj.setLogin_producttemps(productItem,{through:{
+    preoutstockObj.setProducttemps(productItem,{through:{
       amount:_amount
     }})
   })
@@ -458,14 +458,14 @@ const buildPreoutstockUpdataParams = async(params) =>{
 }
 
 const updatePreoutstockItem = async(params) =>{
-  await models.Login_preoutitem.destroy({
+  await models.Preoutitem.destroy({
     where:{
       master_id:params.id
     }
   })
   try{
     params.products.forEach(item=>{
-      models.Login_preoutitem.create({
+      models.Preoutitem.create({
         master_id:params.id,
         productName_id:item.id,
         amount:item.amount
@@ -477,7 +477,7 @@ const updatePreoutstockItem = async(params) =>{
   }
 }
 const findSites = async()=>{
-  const siteMap = await models.Login_site.findAll({
+  const siteMap = await models.Site.findAll({
     attributes:['id','name']
   })
   return siteMap
@@ -491,7 +491,7 @@ const findSites = async()=>{
  */
 const outstockUpload = async(params)=>{
   const {outstockParams,outItemList} = await buildOutstockParams(params)
-  let outstockObj = await models.Login_outstock.create(outstockParams)
+  let outstockObj = await models.Outstock.create(outstockParams)
   const {msg,status} = await buildOutstockItem(outstockObj,outItemList)
   return {
     status,
@@ -529,13 +529,13 @@ const buildOutstockItem = async(outstockObj,outItemList)=>{
     return item.productName_id
   })
 
-  const productList = await models.Login_producttemp.findAll({
+  const productList = await models.Producttemp.findAll({
     where:{
       id:productIds
     },
     attributes:['id'],
     include:{
-      model:models.Login_inventorymaterial,
+      model:models.Inventorymaterial,
       attributes:['id','amount']
     }
   })
@@ -545,7 +545,7 @@ const buildOutstockItem = async(outstockObj,outItemList)=>{
     outItemList.forEach((outItem)=>{
       if(outItem.productName_id === productItem.id ) outitemTemp = outItem
     })
-    outstockObj.setLogin_producttemps(productItem,
+    outstockObj.setProducttemps(productItem,
       {through:
         {
           amountOut:outitemTemp.amountOut,
@@ -568,7 +568,7 @@ const calcOutstockIndex = (params)=>{
     const productSkus = params.products.map(item=>{
       return item.sku
     })
-    const productList = await models.Login_producttemp.findAll({
+    const productList = await models.Producttemp.findAll({
       where:{
         sku:productSkus
       },
@@ -619,11 +619,11 @@ const imOutStockUpload = async(productList,outItemList)=>{
       if(productItem.id === outItem.productName_id) _amountOut = outItem.amountOut
     })
 
-    //遍历productItem的Login_inventorymaterials,更新其数量即可
-    productItem.Login_inventorymaterials.forEach(imItem=>{
-      let _newAmount = imItem.amount - _amountOut*imItem.Login_productmaterial.pmAmount
+    //遍历productItem的Inventorymaterials,更新其数量即可
+    productItem.Inventorymaterials.forEach(imItem=>{
+      let _newAmount = imItem.amount - _amountOut*imItem.Productmaterial.pmAmount
       if(_newAmount < 0) msg = '物料数量已小于0,请及时修改或补充'
-      models.Login_inventorymaterial.update({
+      models.Inventorymaterial.update({
         amount:_newAmount
       },{
         where:{
@@ -643,18 +643,18 @@ const imOutStockUpload = async(productList,outItemList)=>{
  */
 const preToOutstockById = async(id) =>{
   let status = "failed",msg=""
-  let preoutstockOrigin = await models.Login_preoutstock.findOne({
+  let preoutstockOrigin = await models.Preoutstock.findOne({
     where:{
       id:id
     },
     include:[{
-      model:models.Login_producttemp,
+      model:models.Producttemp,
       attributes:['id','weight','length','width','height','dhlShippingFee','freightFee','site_id']
     }]
   })
 
   const outstockParams = buildOutstockParamsFromPre(preoutstockOrigin)
-  let outstockObj = await models.Login_outstock.create(outstockParams)
+  let outstockObj = await models.Outstock.create(outstockParams)
   let res = buildOutItem(outstockObj,preoutstockOrigin)
 
   await preoutstockOrigin.update({
@@ -677,24 +677,24 @@ const buildOutstockParamsFromPre = (preObj) =>{
 }
 
 const buildOutItem = async(outObj,preObj) =>{
-  const productIds = preObj.Login_producttemps.map(item=>{
+  const productIds = preObj.Producttemps.map(item=>{
     return item.id
   })
 
-  const siteMap = await models.Login_site.findAll({
+  const siteMap = await models.Site.findAll({
     attributes:['id','name']
   })
 
-  //console.log(preObj.Login_producttemps)
+  //console.log(preObj.Producttemps)
   //返回一个数组,每个元素是一个对象,放着amount,weight,volume,freightFee
-  const outAttributes = preObj.Login_producttemps.map((item)=>{
-    let _volume = calcVolume(item,item.Login_preoutitem.amount)
-    let _weight = calcWeight(item,item.Login_preoutitem.amount)
-    let _freightFee = calcFreightFee(item,item.Login_preoutitem.amount)
+  const outAttributes = preObj.Producttemps.map((item)=>{
+    let _volume = calcVolume(item,item.Preoutitem.amount)
+    let _weight = calcWeight(item,item.Preoutitem.amount)
+    let _freightFee = calcFreightFee(item,item.Preoutitem.amount)
     let _site = getSiteName(siteMap,item.site_id)
     return {
       productName_id:item.id,
-      amountOut:item.Login_preoutitem.amount,
+      amountOut:item.Preoutitem.amount,
       volume:_volume,
       weight:_weight,
       freightfee:_freightFee,
@@ -702,13 +702,13 @@ const buildOutItem = async(outObj,preObj) =>{
     }
   })
 
-  const productList = await models.Login_producttemp.findAll({
+  const productList = await models.Producttemp.findAll({
     where:{
       id:productIds
     },
     attributes:['id'],
     include:{
-      model:models.Login_inventorymaterial,
+      model:models.Inventorymaterial,
       attributes:['id','amount']
     }
   })
@@ -719,7 +719,7 @@ const buildOutItem = async(outObj,preObj) =>{
       if(item.id === outItem.productName_id) temp = outItem
     })
   
-    outObj.setLogin_producttemps(item,
+    outObj.setProducttemps(item,
       {through:
         {
           amountOut:temp.amountOut,
@@ -797,17 +797,17 @@ const calcFreightFee = (productObj,amount) =>{
  */
 const copyPreoutstockById = async(id)=>{
   let status = "failed",msg=""
-  let preoutstockOrigin = await models.Login_preoutstock.findOne({
+  let preoutstockOrigin = await models.Preoutstock.findOne({
     where:{
       id:id
     },
     include:[{
-      model:models.Login_producttemp,
+      model:models.Producttemp,
       attributes:['id']
     }]
   })
   const copyParams = buildPreoutstockCopyParams(preoutstockOrigin)
-  let copyPreoutstockObj = await models.Login_preoutstock.create(copyParams)
+  let copyPreoutstockObj = await models.Preoutstock.create(copyParams)
   buildPreoutItem(copyPreoutstockObj,preoutstockOrigin)
 
   return {
@@ -819,7 +819,7 @@ const copyPreoutstockById = async(id)=>{
 const buildPreoutstockCopyParams=(params)=>{
   let _params = JSON.parse(JSON.stringify(params))
   delete _params.id
-  delete _params.Login_producttemps
+  delete _params.Producttemps
   if(params.pcode.length < 28){
     _params.pcode = params.pcode + '副本'
   }
@@ -829,34 +829,34 @@ const buildPreoutstockCopyParams=(params)=>{
 }
 
 const buildPreoutItem = async(copyObj,origin)=>{
-  const productIds = origin.Login_producttemps.map(item=>{
+  const productIds = origin.Producttemps.map(item=>{
     return item.id
   })
-  const amounts = origin.Login_producttemps.map(item=>{
-    return item.Login_preoutitem.amount
+  const amounts = origin.Producttemps.map(item=>{
+    return item.Preoutitem.amount
   })
-  const productList = await models.Login_producttemp.findAll({
+  const productList = await models.Producttemp.findAll({
     where:{
       id:productIds
     }
   })
   productList.forEach((item,index)=>{
-    copyObj.setLogin_producttemps(item,{through:{amount:amounts[index]}})
+    copyObj.setProducttemps(item,{through:{amount:amounts[index]}})
   })
 }
 
 const findProductById = async(id)=>{
-  const siteMap = await models.Login_site.findAll({
+  const siteMap = await models.Site.findAll({
     attributes:['id','name']
   })
 
-  // const usersList = await models.Login_user.findAll({
+  // const usersList = await models.User.findAll({
   //   attributes:['id','name']
   // })
 
-  const result = await models.Login_producttemp.findOne({
+  const result = await models.Producttemp.findOne({
     where:{id:id},
-    include:[models.Login_inventorymaterial]
+    include:[models.Inventorymaterial]
   })
   
   let data = {}
@@ -866,13 +866,13 @@ const findProductById = async(id)=>{
 
 const productDetailHandler = (result,siteMap)=>{
   let data = JSON.parse(JSON.stringify(result))
-  delete data.Login_inventorymaterials
+  delete data.Inventorymaterials
   data.siteMap = siteMap
-  data.materials = result.Login_inventorymaterials.map(item=>{
+  data.materials = result.Inventorymaterials.map(item=>{
     let temp = {}
     temp.id = item.id
     temp.uniqueId = item.uniqueId
-    temp.amount = item.Login_productmaterial.pmAmount
+    temp.amount = item.Productmaterial.pmAmount
     return temp
   })
   return data
@@ -887,9 +887,9 @@ const productDetailHandler = (result,siteMap)=>{
  *  3.2 如果修改了数据项,根据产品数据重新计算,最后完成更新
  */
 const changeProduct = async(params)=>{
-  const productOrigin = await models.Login_producttemp.findOne({
+  const productOrigin = await models.Producttemp.findOne({
     where:{id:params.id},
-    include:[models.Login_inventorymaterial]
+    include:[models.Inventorymaterial]
   })
   
   //检查计算项是否发生了改变
@@ -914,7 +914,7 @@ const updateCalcProduct = async(params,productOrigin) =>{
   let productObj = await buildProductObjCompute(params,productOrigin)
   //console.log('obj',productObj)
   try{
-    await models.Login_producttemp.update(productObj,{
+    await models.Producttemp.update(productObj,{
       where:{
         id:params.id
       }
@@ -928,7 +928,7 @@ const updateCalcProduct = async(params,productOrigin) =>{
 
 const updateProduct = async(params)=>{
   let productObj = buildProductObjWithoutCompute(params)
-  await models.Login_producttemp.update(productObj,{
+  await models.Producttemp.update(productObj,{
     where:{
       id:params.id
     }
@@ -938,14 +938,14 @@ const updateProduct = async(params)=>{
 //1.查找表productmaterail中pmProduct_id等于params.id的对象并删除
 //2.根据params.id,materials.item的id和amount,创建pm表新对象
 const updateProductMaterial = async(params)=>{
-  await models.Login_productmaterial.destroy({
+  await models.Productmaterial.destroy({
     where:{
       pmProduct_id:params.id
     }
   })
   try{
     params.materials.forEach(item=>{
-      models.Login_productmaterial.create({
+      models.Productmaterial.create({
         pmProduct_id:params.id,
         pmMaterial_id:item.id,
         pmAmount:item.amount
@@ -1001,7 +1001,7 @@ const createProductMaterial = async(params,productObj) =>{
     return item.id
   })
   
-  const IMObjList = await models.Login_inventorymaterial.findAll({
+  const IMObjList = await models.Inventorymaterial.findAll({
     where:{
       id:imIds
     }
@@ -1014,7 +1014,7 @@ const createProductMaterial = async(params,productObj) =>{
         _amount = item.amount
       }
     })
-    productObj.setLogin_inventorymaterials(imItem,{
+    productObj.setInventorymaterials(imItem,{
       through:{
         pmAmount:_amount
       }
@@ -1022,7 +1022,7 @@ const createProductMaterial = async(params,productObj) =>{
   })
 }
 const checkSkuRepeat = async(sku) =>{
-  let skuRes = await models.Login_producttemp.findAndCountAll({
+  let skuRes = await models.Producttemp.findAndCountAll({
     where:{
       sku:sku
     }
@@ -1076,7 +1076,7 @@ const createProductWithCompute = async(params) =>{
   })
   let _productCostPercentage = calProductCostPercentage(params)
 
-  let productObj = await models.Login_producttemp.create({
+  let productObj = await models.Producttemp.create({
     ...params,
     shrinkage:_shrinkage,
     margin:_margin,
@@ -1088,7 +1088,7 @@ const createProductWithCompute = async(params) =>{
 }
 
 const createProductWithoutCompute = async(params) =>{
-  let productObj = await models.Login_producttemp.create({
+  let productObj = await models.Producttemp.create({
     ...params,
     shrinkage:0,
     margin:0,
@@ -1119,7 +1119,7 @@ const buildProductObjWithoutCompute = (params) =>{
 }
 
 const getExchangeRateBySiteId = async(site_id)=>{
-  let siteObj = await models.Login_site.findOne({
+  let siteObj = await models.Site.findOne({
     where:{
       id:site_id
     },

@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     exchangeRateRMB:DataTypes.FLOAT,
   }, {});
   Currency.associate = function(models) {
-    models.Currency.hasMany(models.Login_site,{
+    models.Currency.hasMany(models.Site,{
       foreignKey:"currency_id"
     })
   }

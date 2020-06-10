@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Login_producttemp = sequelize.define('Login_producttemp', {
+  const Producttemp = sequelize.define('Producttemp', {
     sku: DataTypes.STRING(200),
     childAsin:DataTypes.STRING(50),
     title: DataTypes.TEXT,
@@ -31,57 +31,57 @@ module.exports = (sequelize, DataTypes) => {
     freightFee: DataTypes.DECIMAL,
     tagpath: DataTypes.STRING(150),
   }, {});
-  Login_producttemp.associate = function(models) {
+  Producttemp.associate = function(models) {
     //物料与产品多对多
-    models.Login_producttemp.belongsToMany(models.Login_inventorymaterial,{
+    models.Producttemp.belongsToMany(models.Inventorymaterial,{
       through:{
-        model:models.Login_productmaterial,
+        model:models.Productmaterial,
         unique:false
       },
       foreignKey:'pmProduct_id',
       constraints:false
     })
-    models.Login_producttemp.hasMany(models.Login_productmaterial,
+    models.Producttemp.hasMany(models.Productmaterial,
       {
         foreignKey:"pmProduct_id"
       }
     )
-    models.Login_producttemp.belongsTo(models.Login_user,
+    models.Producttemp.belongsTo(models.User,
       {
         foreignKey:"creater_id"
       }
     )
-    models.Login_producttemp.belongsTo(models.Login_site,
+    models.Producttemp.belongsTo(models.Site,
       {
         foreignKey:"site_id"
       }
     )
-    models.Login_producttemp.belongsToMany(models.Login_preoutstock,{
+    models.Producttemp.belongsToMany(models.Preoutstock,{
       through:{
-        model:models.Login_preoutitem,
+        model:models.Preoutitem,
         unique:false
       },
       foreignKey:'productName_id',
       constraints:false
     })
-    models.Login_producttemp.hasMany(models.Login_preoutitem,
+    models.Producttemp.hasMany(models.Preoutitem,
       {
         foreignKey:"productName_id"
       }
     )
-    models.Login_producttemp.belongsToMany(models.Login_outstock,{
+    models.Producttemp.belongsToMany(models.Outstock,{
       through:{
-        model:models.Login_outitem,
+        model:models.Outitem,
         unique:false
       },
       foreignKey:'productName_id',
       constraints:false
     })
-    models.Login_producttemp.hasMany(models.Login_outitem,
+    models.Producttemp.hasMany(models.Outitem,
       {
         foreignKey:"productName_id"
       }
     )
   }
-  return Login_producttemp;
+  return Producttemp;
 };

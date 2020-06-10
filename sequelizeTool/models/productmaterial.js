@@ -1,21 +1,21 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Login_productmaterial = sequelize.define('Login_productmaterial', {
+  const Productmaterial = sequelize.define('Productmaterial', {
     pmAmount: DataTypes.INTEGER(10).UNSIGNED,
     pmMaterial_id: DataTypes.INTEGER(11),
     pmProduct_id: DataTypes.INTEGER(11)
   }, {});
-  Login_productmaterial.associate = function(models) {
-    models.Login_productmaterial.belongsTo(models.Login_inventorymaterial,
+  Productmaterial.associate = function(models) {
+    models.Productmaterial.belongsTo(models.Inventorymaterial,
       {
         foreignKey:"pmMaterial_id"
       }
     )
-    models.Login_productmaterial.belongsTo(models.Login_producttemp,
+    models.Productmaterial.belongsTo(models.Producttemp,
       {
         foreignKey:"pmProduct_id"
       }
     )
   }
-  return Login_productmaterial;
+  return Productmaterial;
 };

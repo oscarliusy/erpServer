@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Login_outitem = sequelize.define('Login_outitem', {
+  const Outitem = sequelize.define('Outitem', {
     amountOut: DataTypes.INTEGER(10).UNSIGNED,
     master_id: DataTypes.INTEGER(11),
     productName_id: DataTypes.INTEGER(11),
@@ -9,17 +9,17 @@ module.exports = (sequelize, DataTypes) => {
     freightfee: DataTypes.DECIMAL,
     site:DataTypes.STRING(30)
   }, {});
-  Login_outitem.associate = function(models) {
-    models.Login_outitem.belongsTo(models.Login_outstock,
+  Outitem.associate = function(models) {
+    models.Outitem.belongsTo(models.Outstock,
       {
         foreignKey:"master_id"
       }
     )
-    models.Login_outitem.belongsTo(models.Login_producttemp,
+    models.Outitem.belongsTo(models.Producttemp,
       {
         foreignKey:"productName_id"
       }
     )
   }
-  return Login_outitem;
+  return Outitem;
 };

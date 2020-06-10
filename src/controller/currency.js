@@ -3,7 +3,7 @@ const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
 
 const findSiteList = async()=>{
-  const result = await models.Login_site.findAndCountAll({
+  const result = await models.Site.findAndCountAll({
     include:[{
       model:models.Currency
     }]
@@ -49,7 +49,7 @@ const updateSiteCurrency = async(params)=>{
         name:params.currency
       }
     })
-    let siteObj = await models.Login_site.findOne({
+    let siteObj = await models.Site.findOne({
       where:{
         name:params.site
       }

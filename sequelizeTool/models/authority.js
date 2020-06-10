@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
     descripiton: DataTypes.STRING(45)
   }, {});
   Authority.associate = function(models) {
-    models.Authority.hasMany(models.Login_user,{
+    models.Authority.hasMany(models.User,{
       foreignKey:"authority_id"
     })
   }
