@@ -13,5 +13,15 @@ router.post('/list',async(ctx)=>{
   }
 })
 
+router.post('/editprofile',async(ctx)=>{
+  //console.log(ctx.request.body)
+  const data = await accountController.editProfile(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 
 module.exports = router
