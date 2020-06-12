@@ -85,6 +85,15 @@ const OUTSTOCKKEYS = ['id','code','c_time','description','total_weight','total_v
 
 const OUTSTOCK_DETAIL_KEYS = ['site','sku','amount']
 
+const MATERIAL_EDITLOG_KEYS = ['id','createAt','user','action']
+
+const LOG_TYPES = {
+  MATERIAL:"material",
+  PRODUCT:"product",
+  ACCOUNT:"account",
+  CURRENCY:"currency"
+}
+
 module.exports = {
   IMKEYS,
   INSTOCKKEYS,
@@ -95,5 +104,7 @@ module.exports = {
   PREOUTSTOCK_KEYS,
   PRODUCT_FOR_PREOUTSTOCK_KEYS,
   OUTSTOCKKEYS,
-  OUTSTOCK_DETAIL_KEYS
+  OUTSTOCK_DETAIL_KEYS,
+  LOG_TYPES,
+  MATERIAL_EDITLOG_KEYS
 }

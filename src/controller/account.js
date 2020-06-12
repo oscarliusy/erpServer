@@ -5,6 +5,7 @@ const util = require('../util')
 const bcrypt = require('bcryptjs')
 const config = require('../config')
 const jwt = require("jsonwebtoken")
+const Log = require('../logger')
 
 const findAccountList = async()=>{
   const result = await models.User.findAndCountAll({
@@ -79,6 +80,7 @@ const signIn = async(params) =>{
         email:params.email
       }
       const authToken = jwt.sign(payload,config.secretOrKey,{expiresIn:config.tokenExpireTime})
+      Log.user.info(`Account:${payload.username}-Id:${payload.id} sign in`)
       return {
         status:'succeed',
         msg:'成功登陆',
@@ -130,6 +132,7 @@ const editProfile = async(params)=>{
           email:params.email
         }
       })
+      Log.user.info(`Account:${updatePayloadWithPw.name}-Id:${userObj.id} edit profile`)
       return {
         status:'succeed',
         msg:'已更新,请重新登录'
@@ -144,6 +147,7 @@ const editProfile = async(params)=>{
           email:params.email
         }
       })
+      Log.user.info(`Account:${updatePayload.name}-Id:${userObj.id} edit profile`)
       return {
         status:'succeed',
         msg:'已更新,请重新登录'

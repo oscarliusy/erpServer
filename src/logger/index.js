@@ -3,44 +3,33 @@ const Util = require('../util')
 
 const LOG_DIR = `tmp/log`
 const LOG_CONF = {
-  //配置日志类别名和日志信息输出目的地 
   appenders: {
       stdout: {
-          type: 'console' // 控制台输出
+          type: 'console'
       },
       user: {
-          type: 'dateFile',// 日期格式文件输出
+          type: 'file',
           filename: `${LOG_DIR}/user.log`
       },
       req: {
-          type: 'dateFile',
+          type: 'file',
           filename: `${LOG_DIR}/req.log`
       },
       error: {
-          type: 'dateFile',
+          type: 'file',
           filename: `${LOG_DIR}/error.log`
       },
-      debug: {
-          type: 'dateFile',
-          filename: `${LOG_DIR}/debug.log`
-      },
       db: {
-          type: 'dateFile',
+          type: 'file',
           filename: `${LOG_DIR}/db.log`
       }
   },
-  /**
-   * 日志类别到类别定义的映射
-     appenders:用于此类别的附加器名称列表,所有类别日志都通过console输出,并记录在对应file中
-     level: 此类别发送到附加程序的最低级别  
-            ALL <TRACE <DEBUG <INFO <WARN <ERROR<FATAL <MARK <OFF
-   */
   categories: {
-      default:{ appenders: ['stdout', 'debug'],   level: 'debug'},
+      default:{appenders: ['stdout'],   level: 'debug'},
       error:  { appenders: ['stdout', 'error'],   level: 'error'},
       req:    { appenders: ['stdout', 'req'],     level: 'info'},
       user:   { appenders: ['stdout', 'user'],    level: 'info'},
-      db:     { appenders: ['stdout', 'db'],      level: 'info'}
+      db:     { appenders: ['stdout', 'db'],      level: 'info'} 
   }
 }
 
@@ -55,6 +44,5 @@ module.exports = {
   user:   Log4js.getLogger('user'),
   error:  Log4js.getLogger('error'),
   req:    Log4js.getLogger('req'),
-  db:     Log4js.getLogger('db'),
-  debug:  Log4js.getLogger('default')
+  db:     Log4js.getLogger('db')
 }

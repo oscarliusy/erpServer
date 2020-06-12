@@ -90,6 +90,40 @@ const OutstockDataHandler = (result)=>{
   return data
 }
 
+const findEditLog = async(params) =>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const result = await models.Log.findAndCountAll({
+    order:[['id','DESC']] ,
+    offset:offset,
+    limit:limited,
+    include:[models.User],
+    where:{
+      type:CONSTANT.LOG_TYPES.PRODUCT
+    }
+  })
+  let data = editLogDataHandler(result)
+  return data
+}
+
+const editLogDataHandler = (result) =>{
+  let data = {}
+  data.total = result.count
+  let editKey = CONSTANT.MATERIAL_EDITLOG_KEYS
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    editKey.forEach(key=>{
+      if(key === 'user'){
+        temp.user = item.User.name
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
+  return data
+}
+
 const findOutstockDetailById = async(params)=>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
@@ -904,6 +938,12 @@ const changeProduct = async(params)=>{
     updateCalcProduct(params,productOrigin)
   }
   updateProductMaterial(params)
+  await models.Log.create({
+    user_id:params.decodedInfo.id,
+    createAt:Date.now(),
+    type:CONSTANT.LOG_TYPES.PRODUCT,
+    action:`编辑:${productOrigin.sku}`
+  })
   return {
     msg:'已成功更新数据',
     id:params.id
@@ -1307,5 +1347,6 @@ module.exports = {
   preoutstockCreate,
   outstockUpload,
   findOutstockLog,
-  findOutstockDetailById
+  findOutstockDetailById,
+  findEditLog
 }

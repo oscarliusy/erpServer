@@ -60,6 +60,14 @@ const updateSiteCurrency = async(params)=>{
         currency_id:currencyObj.id
       })
     }
+
+    await models.Log.create({
+      user_id:params.decodedInfo.id,
+      createAt:Date.now(),
+      type:CONSTANT.LOG_TYPES.CURRENCY,
+      action:`修改站点货币对:${params.site}-${params.currency}`
+    })
+
     status = 'success'
     msg = '已成功修改'
   }
@@ -90,6 +98,12 @@ const updateExchangeRate = async(params)=>{
       })
       msg = '已成功修改汇率'
       status = 'success'
+      await models.Log.create({
+        user_id:params.decodedInfo.id,
+        createAt:Date.now(),
+        type:CONSTANT.LOG_TYPES.CURRENCY,
+        action:`修改汇率:${params.currency}-${params.exchangeRate}`
+      })
     }else{
       msg = '无法修改本币汇率'
       status = 'failed'
@@ -108,9 +122,44 @@ const updateExchangeRate = async(params)=>{
   }
 }
 
+const findEditLog = async(params) =>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const result = await models.Log.findAndCountAll({
+    order:[['id','DESC']] ,
+    offset:offset,
+    limit:limited,
+    include:[models.User],
+    where:{
+      type:CONSTANT.LOG_TYPES.CURRENCY
+    }
+  })
+  let data = editLogDataHandler(result)
+  return data
+}
+
+const editLogDataHandler = (result) =>{
+  let data = {}
+  data.total = result.count
+  let editKey = CONSTANT.MATERIAL_EDITLOG_KEYS
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    editKey.forEach(key=>{
+      if(key === 'user'){
+        temp.user = item.User.name
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
+  return data
+}
+
 module.exports = {
   findSiteList,
   findExchangeRate,
   updateSiteCurrency,
-  updateExchangeRate
+  updateExchangeRate,
+  findEditLog
 }

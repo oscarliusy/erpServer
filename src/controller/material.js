@@ -78,7 +78,13 @@ const changeInventoryMaterial = async(params)=>{
       id:params.id
     }
   })
-  
+
+  await models.Log.create({
+    user_id:params.decodedInfo.id,
+    createAt:Date.now(),
+    type:CONSTANT.LOG_TYPES.MATERIAL,
+    action:`编辑:${IMObj.uniqueId}`
+  })
   return {
     msg:'已成功更新数据',
     id:params.id
@@ -218,6 +224,40 @@ const findInstockList = async(params)=>{
   return data
 }
 
+const findEditLog = async(params) =>{
+  const offset = parseInt(params.offset) || 0
+  const limited = parseInt(params.limited) || 10
+  const result = await models.Log.findAndCountAll({
+    order:[['id','DESC']] ,
+    offset:offset,
+    limit:limited,
+    include:[models.User],
+    where:{
+      type:CONSTANT.LOG_TYPES.MATERIAL
+    }
+  })
+  let data = editLogDataHandler(result)
+  return data
+}
+
+const editLogDataHandler = (result) =>{
+  let data = {}
+  data.total = result.count
+  let editKey = CONSTANT.MATERIAL_EDITLOG_KEYS
+  data.list = result.rows.map(item=>{
+    let temp = {}
+    editKey.forEach(key=>{
+      if(key === 'user'){
+        temp.user = item.User.name
+      }else{
+        temp[key] = item[key]
+      }
+    })
+    return temp
+  })
+  return data
+}
+
 const findPurchasers = async()=>{
   const usersList = await models.User.findAll({
     attributes:['id','name']
@@ -288,5 +328,6 @@ module.exports = {
   findIMListForInstork,
   instock,
   findInstockList,
-  findInstockDetail
+  findInstockDetail,
+  findEditLog
 }

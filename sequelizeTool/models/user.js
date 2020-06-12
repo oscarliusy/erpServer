@@ -26,6 +26,9 @@ module.exports = (sequelize, DataTypes) => {
     models.User.belongsTo(models.Authority,{
       foreignKey:"authority_id"
     })
+    models.User.hasMany(models.Log,{
+      foreignKey:"user_id"
+    })
   }
   return User
 };

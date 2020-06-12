@@ -147,4 +147,14 @@ router.post('/outstock/detail',async(ctx)=>{
     data:data
   }
 })
+
+router.post('/editlog',async(ctx)=>{
+  const data = await productController.findEditLog(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 module.exports = router

@@ -39,5 +39,12 @@ router.post('/setexchangerate',async(ctx)=>{
   }
 })
 
-
+router.post('/editlog',async(ctx)=>{
+  const data = await currencyController.findEditLog(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 module.exports = router

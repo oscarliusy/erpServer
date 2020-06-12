@@ -109,4 +109,13 @@ router.post('/instock/:id',async(ctx)=>{
     data:data
   }
 })
+
+router.post('/editlog',async(ctx)=>{
+  const data = await materialController.findEditLog(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 module.exports = router

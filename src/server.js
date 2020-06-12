@@ -4,27 +4,25 @@ const BodyParser = require('koa-bodyparser')
 const Config = require('./config')
 const utilToken = require('./util/tokenVerify')
 const cors = require('@koa/cors')
+const Log = require('./logger')
 
 const initKoa = () =>{
   const app = new Koa()
 
+  app.use(async(ctx,next)=>{
+    const start = Date.now()
+    await next()
+    const ms = Date.now() - start
+    Log.req.info(`${ctx.method} ${ctx.path} - ${ms}ms`)
+  })
+
+  // app.on('error',err=>{
+  //   Log.error.error(err)
+  // })
+
   app.use(BodyParser())
 
-  app.use(cors({
-    origin: (ctx) => {
-      let origin = ctx.request.headers.origin || ''
-      const allowedOrigins = ['http://localhost:3000','file://']
-      if (allowedOrigins.includes(origin) || origin.includes('localhost')) {
-        return origin
-      } else {
-        return null
-      }
-    },
-    keepHeadersOnError: true,
-    credentials: true, //是否允许发送Cookie
-    allowMethods: ['GET', 'POST'], 
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept']
-  }))
+  app.use(cors(Config.cors_config))
 
   app.use(utilToken.tokenVerify)
 
