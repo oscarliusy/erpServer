@@ -15,8 +15,8 @@ const combine = () => {
         }
         catch (e) {
             //等同于 Log4js.getLogger('default').debug.error('xxx') 向debug类别发出一个error级别的错误
-            Log.debug.error(`load router module('${mod}') error \{${e}\}`);
-            Log.debug.error(`${e.stack}`);  
+            Log.error.error(`load router module('${mod}') error \{${e}\}`);
+            Log.error.error(`${e.stack}`);  
             process.exit()
         }
     })

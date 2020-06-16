@@ -6,13 +6,16 @@
   "scripts": {
     "start": "node start.js",
     "nodemon": "nodemon start.js",
-    "prd":"pm2 start ecosystem.config.js --env production"
+    "prd": "pm2 start ecosystem.config.js --env production",
+    "nodeLinux": "export NODE_ENV='production' && node start.js",
+    "nodeWin": "cross-env NODE_ENV=production && node start.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@koa/cors": "^3.1.0",
     "bcryptjs": "^2.4.3",
+    "cross-env": "^7.0.2",
     "jsonwebtoken": "^8.5.1",
     "koa": "^2.11.0",
     "koa-bodyparser": "^4.3.0",

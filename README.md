@@ -10,6 +10,7 @@
 使用log4js记录日志
 使用koa2-cors解决跨域
 使用sequelize作为与mysql交互的ORM
+使用cross-env解决windows下设置环境变量的bug
 
 # sequelize
 使用sequelize-auto生成model
