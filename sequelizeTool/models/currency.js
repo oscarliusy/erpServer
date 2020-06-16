@@ -1,13 +1,13 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Currency = sequelize.define('Currency', {
+  const currency = sequelize.define('currency', {
     name: DataTypes.STRING(45),
     exchangeRateRMB:DataTypes.FLOAT,
   }, {});
-  Currency.associate = function(models) {
-    models.Currency.hasMany(models.Site,{
+  currency.associate = function(models) {
+    models.currency.hasMany(models.site,{
       foreignKey:"currency_id"
     })
   }
-  return Currency;
+  return currency;
 };

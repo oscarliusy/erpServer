@@ -3,9 +3,9 @@ const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
 
 const findSiteList = async()=>{
-  const result = await models.Site.findAndCountAll({
+  const result = await models.site.findAndCountAll({
     include:[{
-      model:models.Currency
+      model:models.currency
     }]
   })
 
@@ -19,14 +19,14 @@ const siteCurrencyDataHandler = (result) =>{
   data.list = result.rows.map(item=>{
     let temp = {}
     temp.site = item.name
-    temp.currency = item.Currency.name
+    temp.currency = item.currency.name
     return temp
   })
   return data
 }
 
 const findExchangeRate = async()=>{
-  const result = await models.Currency.findAndCountAll()
+  const result = await models.currency.findAndCountAll()
   const data = exchangeRateDataHandler(result)
   return data
 }
@@ -44,12 +44,12 @@ const exchangeRateDataHandler = (result) =>{
 const updateSiteCurrency = async(params)=>{
   let status = 'failed' ,msg=''
   try{
-    let currencyObj = await models.Currency.findOne({
+    let currencyObj = await models.currency.findOne({
       where:{
         name:params.currency
       }
     })
-    let siteObj = await models.Site.findOne({
+    let siteObj = await models.site.findOne({
       where:{
         name:params.site
       }
@@ -61,7 +61,7 @@ const updateSiteCurrency = async(params)=>{
       })
     }
 
-    await models.Log.create({
+    await models.log.create({
       user_id:params.decodedInfo.id,
       createAt:Date.now(),
       type:CONSTANT.LOG_TYPES.CURRENCY,
@@ -89,7 +89,7 @@ const updateExchangeRate = async(params)=>{
   let status = 'failed' ,msg=''
   try{
     if(params.currency !== 'CNY'){
-      await models.Currency.update({
+      await models.currency.update({
         exchangeRateRMB:params.exchangeRate
       },{
         where:{
@@ -98,7 +98,7 @@ const updateExchangeRate = async(params)=>{
       })
       msg = '已成功修改汇率'
       status = 'success'
-      await models.Log.create({
+      await models.log.create({
         user_id:params.decodedInfo.id,
         createAt:Date.now(),
         type:CONSTANT.LOG_TYPES.CURRENCY,
@@ -125,11 +125,11 @@ const updateExchangeRate = async(params)=>{
 const findEditLog = async(params) =>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
-  const result = await models.Log.findAndCountAll({
+  const result = await models.log.findAndCountAll({
     order:[['id','DESC']] ,
     offset:offset,
     limit:limited,
-    include:[models.User],
+    include:[models.user],
     where:{
       type:CONSTANT.LOG_TYPES.CURRENCY
     }
@@ -146,7 +146,7 @@ const editLogDataHandler = (result) =>{
     let temp = {}
     editKey.forEach(key=>{
       if(key === 'user'){
-        temp.user = item.User.name
+        temp.user = item.user.name
       }else{
         temp[key] = item[key]
       }

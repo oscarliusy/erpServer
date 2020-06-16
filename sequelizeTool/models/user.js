@@ -1,34 +1,34 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define('User', {
+  const user = sequelize.define('user', {
     name: DataTypes.STRING(128),
     password: DataTypes.STRING(256),
     email:DataTypes.STRING(254),
     authority_id:DataTypes.INTEGER(11)
   }, {});
-  User.associate = function(models) {
+  user.associate = function(models) {
     //定义一对多关系
-    models.User.hasMany(models.Inventorymaterial,{
+    models.user.hasMany(models.inventorymaterial,{
       foreignKey:"userPurchase_id"
     })
-    models.User.hasMany(models.Instock,{
+    models.user.hasMany(models.instock,{
       foreignKey:"userInstock_id"
     })
-    models.User.hasMany(models.Producttemp,{
+    models.user.hasMany(models.producttemp,{
       foreignKey:"creater_id"
     })
-    models.User.hasMany(models.Preoutstock,{
+    models.user.hasMany(models.preoutstock,{
       foreignKey:"user_id"
     })
-    models.User.hasMany(models.Outstock,{
+    models.user.hasMany(models.outstock,{
       foreignKey:"userOutstock_id"
     })
-    models.User.belongsTo(models.Authority,{
+    models.user.belongsTo(models.authority,{
       foreignKey:"authority_id"
     })
-    models.User.hasMany(models.Log,{
+    models.user.hasMany(models.log,{
       foreignKey:"user_id"
     })
   }
-  return User
+  return user
 };

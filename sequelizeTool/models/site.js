@@ -1,16 +1,16 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Site = sequelize.define('Site', {
+  const site = sequelize.define('site', {
     name: DataTypes.STRING(50),
     currency_id:DataTypes.INTEGER(11)
   }, {});
-  Site.associate = function(models) {
-    models.Site.hasMany(models.Producttemp,{
+  site.associate = function(models) {
+    models.site.hasMany(models.producttemp,{
       foreignKey:"site_id"
     })
-    models.Site.belongsTo(models.Currency,{
+    models.site.belongsTo(models.currency,{
       foreignKey:"currency_id"
     })
   }
-  return Site;
+  return site;
 };

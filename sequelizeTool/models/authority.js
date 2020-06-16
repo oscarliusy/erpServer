@@ -1,13 +1,13 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Authority = sequelize.define('Authority', {
+  const authority = sequelize.define('authority', {
     code: DataTypes.STRING(45),
     descripiton: DataTypes.STRING(45)
   }, {});
-  Authority.associate = function(models) {
-    models.Authority.hasMany(models.User,{
+  authority.associate = function(models) {
+    models.authority.hasMany(models.user,{
       foreignKey:"authority_id"
     })
   }
-  return Authority;
+  return authority;
 };

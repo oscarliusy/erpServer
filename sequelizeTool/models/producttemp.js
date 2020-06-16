@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Producttemp = sequelize.define('Producttemp', {
+  const producttemp = sequelize.define('producttemp', {
     sku: DataTypes.STRING(200),
     childAsin:DataTypes.STRING(50),
     title: DataTypes.TEXT,
@@ -31,57 +31,57 @@ module.exports = (sequelize, DataTypes) => {
     freightFee: DataTypes.DECIMAL,
     tagpath: DataTypes.STRING(150),
   }, {});
-  Producttemp.associate = function(models) {
+  producttemp.associate = function(models) {
     //物料与产品多对多
-    models.Producttemp.belongsToMany(models.Inventorymaterial,{
+    models.producttemp.belongsToMany(models.inventorymaterial,{
       through:{
-        model:models.Productmaterial,
+        model:models.productmaterial,
         unique:false
       },
       foreignKey:'pmProduct_id',
       constraints:false
     })
-    models.Producttemp.hasMany(models.Productmaterial,
+    models.producttemp.hasMany(models.productmaterial,
       {
         foreignKey:"pmProduct_id"
       }
     )
-    models.Producttemp.belongsTo(models.User,
+    models.producttemp.belongsTo(models.user,
       {
         foreignKey:"creater_id"
       }
     )
-    models.Producttemp.belongsTo(models.Site,
+    models.producttemp.belongsTo(models.site,
       {
         foreignKey:"site_id"
       }
     )
-    models.Producttemp.belongsToMany(models.Preoutstock,{
+    models.producttemp.belongsToMany(models.preoutstock,{
       through:{
-        model:models.Preoutitem,
+        model:models.preoutitem,
         unique:false
       },
       foreignKey:'productName_id',
       constraints:false
     })
-    models.Producttemp.hasMany(models.Preoutitem,
+    models.producttemp.hasMany(models.preoutitem,
       {
         foreignKey:"productName_id"
       }
     )
-    models.Producttemp.belongsToMany(models.Outstock,{
+    models.producttemp.belongsToMany(models.outstock,{
       through:{
-        model:models.Outitem,
+        model:models.outitem,
         unique:false
       },
       foreignKey:'productName_id',
       constraints:false
     })
-    models.Producttemp.hasMany(models.Outitem,
+    models.producttemp.hasMany(models.outitem,
       {
         foreignKey:"productName_id"
       }
     )
   }
-  return Producttemp;
+  return producttemp;
 };

@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Inventorymaterial = sequelize.define('Inventorymaterial', {
+  const inventorymaterial = sequelize.define('inventorymaterial', {
     amount: DataTypes.INTEGER(11),
     description: DataTypes.TEXT,
     uniqueId:DataTypes.STRING(100),
@@ -8,39 +8,39 @@ module.exports = (sequelize, DataTypes) => {
     userPurchase_id:DataTypes.INTEGER(11),
     price:DataTypes.DECIMAL
   }, {});
-  Inventorymaterial.associate = function(models) {
-    models.Inventorymaterial.belongsTo(models.User,
+  inventorymaterial.associate = function(models) {
+    models.inventorymaterial.belongsTo(models.user,
       {
         foreignKey:"userPurchase_id"
       }
     )
-    models.Inventorymaterial.belongsToMany(models.Instock,{
+    models.inventorymaterial.belongsToMany(models.instock,{
       through:{
-        model:models.Initem,
+        model:models.initem,
         unique:false
       },
       foreignKey:'materialName_id',
       constraints:false
     })
-    models.Inventorymaterial.hasMany(models.Initem,
+    models.inventorymaterial.hasMany(models.initem,
       {
         foreignKey:"materialName_id"
       }
     )
     //物料与产品多对多
-    models.Inventorymaterial.belongsToMany(models.Producttemp,{
+    models.inventorymaterial.belongsToMany(models.producttemp,{
       through:{
-        model:models.Productmaterial,
+        model:models.productmaterial,
         unique:false
       },
       foreignKey:'pmMaterial_id',
       constraints:false
     })
-    models.Inventorymaterial.hasMany(models.Productmaterial,
+    models.inventorymaterial.hasMany(models.productmaterial,
       {
         foreignKey:"pmMaterial_id"
       }
     )
   }
-  return Inventorymaterial;
+  return inventorymaterial;
 }

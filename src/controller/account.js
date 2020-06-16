@@ -8,9 +8,9 @@ const jwt = require("jsonwebtoken")
 const Log = require('../logger')
 
 const findAccountList = async()=>{
-  const result = await models.User.findAndCountAll({
+  const result = await models.user.findAndCountAll({
     include:[{
-      model:models.Authority,
+      model:models.authority,
       attributes:['code']
     }]
   })
@@ -19,7 +19,7 @@ const findAccountList = async()=>{
 }
 
 const register = async(params)=>{
-  const findResult = await models.User.findAndCountAll({
+  const findResult = await models.user.findAndCountAll({
     where:{
       email:params.email
     }
@@ -39,12 +39,12 @@ const register = async(params)=>{
 
 const createUser = async(params)=>{
   const hashPW = util.generateHashPassword(params.password)
-  const authorityObj = await models.Authority.findOne({
+  const authorityObj = await models.authority.findOne({
     where:{
       code:params.authority
     }
   })
-  await models.User.create({
+  await models.user.create({
     name:params.name,
     password:hashPW,
     email:params.email,
@@ -55,12 +55,12 @@ const createUser = async(params)=>{
 const signIn = async(params) =>{
   //console.log(params)
   let status = '',msg='', pwComparedResult
-  const findResult = await models.User.findAndCountAll({
+  const findResult = await models.user.findAndCountAll({
     where:{
       email:params.email
     },
     include:[{
-      model:models.Authority
+      model:models.authority
     }]
   })
   if(findResult.count === 0){
@@ -76,7 +76,7 @@ const signIn = async(params) =>{
         id: userObj.id,
         username:userObj.name,
         avatar:'',
-        role:userObj.Authority.code,
+        role:userObj.authority.code,
         email:params.email
       }
       const authToken = jwt.sign(payload,config.secretOrKey,{expiresIn:config.tokenExpireTime})
@@ -107,7 +107,7 @@ const signIn = async(params) =>{
  */
 const editProfile = async(params)=>{
   let status = '',msg='', pwComparedResult
-  const findResult = await models.User.findAndCountAll({
+  const findResult = await models.user.findAndCountAll({
     where:{
       email:params.email
     }
@@ -127,7 +127,7 @@ const editProfile = async(params)=>{
         name:params.new_username,
         password:hashPW
       }
-      await models.User.update(updatePayloadWithPw,{
+      await models.user.update(updatePayloadWithPw,{
         where:{
           email:params.email
         }
@@ -142,7 +142,7 @@ const editProfile = async(params)=>{
         email:params.new_email,
         name:params.new_username
       }
-      await models.User.update(updatePayload,{
+      await models.user.update(updatePayload,{
         where:{
           email:params.email
         }

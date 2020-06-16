@@ -1,25 +1,25 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Instock = sequelize.define('Instock', {
+  const instock = sequelize.define('instock', {
     code:DataTypes.STRING(50),
     c_time:DataTypes.STRING(50),
     description:DataTypes.TEXT,
-    userInstock_id: DataTypes.INTEGER(11)
+    userinstock_id: DataTypes.INTEGER(11)
   }, {});
-  Instock.associate = function(models) {
-    Instock.belongsTo(models.User,
+  instock.associate = function(models) {
+    instock.belongsTo(models.user,
       {
         foreignKey:"userInstock_id"
       }
     )
-    models.Instock.belongsToMany(models.Inventorymaterial,{
+    models.instock.belongsToMany(models.inventorymaterial,{
       through:{
-        model:models.Initem,
+        model:models.initem,
         unique:false
       },
       foreignKey:'master_id',
       constraints:false
     })
   };
-  return Instock;
+  return instock;
 };

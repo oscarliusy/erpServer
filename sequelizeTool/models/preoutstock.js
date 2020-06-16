@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const Preoutstock = sequelize.define('Preoutstock', {
+  const preoutstock = sequelize.define('preoutstock', {
     pcode: DataTypes.STRING(50),
     ptime:DataTypes.STRING(50),
     pdescription:DataTypes.TEXT,
@@ -10,25 +10,25 @@ module.exports = (sequelize, DataTypes) => {
     user_id: DataTypes.INTEGER(11),
     has_out:DataTypes.INTEGER(1)
   }, {});
-  Preoutstock.associate = function(models) {
-    models.Preoutstock.belongsTo(models.User,
+  preoutstock.associate = function(models) {
+    models.preoutstock.belongsTo(models.user,
       {
         foreignKey:"user_id"
       }
     )
-    models.Preoutstock.belongsToMany(models.Producttemp,{
+    models.preoutstock.belongsToMany(models.producttemp,{
       through:{
-        model:models.Preoutitem,
+        model:models.preoutitem,
         unique:false
       },
       foreignKey:'master_id',
       constraints:false
     })
-    models.Preoutstock.hasMany(models.Preoutitem,
+    models.preoutstock.hasMany(models.preoutitem,
       {
         foreignKey:"master_id"
       }
     )
   }
-  return Preoutstock;
+  return preoutstock;
 };
