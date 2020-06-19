@@ -3,7 +3,7 @@ const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
 const util = require('../util')
 const bcrypt = require('bcryptjs')
-const config = require('../config')
+const {Config} = require('../config')
 const jwt = require("jsonwebtoken")
 const Log = require('../logger')
 
@@ -79,7 +79,7 @@ const signIn = async(params) =>{
         role:userObj.authority.code,
         email:params.email
       }
-      const authToken = jwt.sign(payload,config.secretOrKey,{expiresIn:config.tokenExpireTime})
+      const authToken = jwt.sign(payload,Config.secretOrKey,{expiresIn:Config.tokenExpireTime})
       Log.user.info(`Account:${payload.username}-Id:${payload.id} sign in`)
       return {
         status:'succeed',

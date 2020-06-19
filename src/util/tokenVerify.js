@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken')
-const config = require('../config')
+const {Config} = require('../config')
 const bcrypt = require('bcryptjs')
 const models = require('../../sequelizeTool/models')
 const CONSTANT = require('../constant/urls')
@@ -21,7 +21,7 @@ const tokenVerify = async(ctx,next)=> {
         if (/^Bearer$/i.test(scheme)) {
           try {
             //jwt.verify方法验证token是否有效
-            const decoded = jwt.verify(token, config.secretOrKey)
+            const decoded = jwt.verify(token, Config.secretOrKey)
             ctx.request.body.decodedInfo = decoded
             return next()
           } catch (error) {

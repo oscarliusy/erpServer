@@ -1,6 +1,5 @@
-
-const config = {
-  debug:{
+const configs = {
+  development:{
     server_port:8000,
     secretOrKey:"tokenSecret",
     tokenExpireTime:60*60*24*7, //一周
@@ -19,8 +18,27 @@ const config = {
       allowMethods: ['GET', 'POST'], 
       allowHeaders: ['Content-Type', 'Authorization', 'Accept']
     }
-  }
+  },
+  production:{
+    server_port:8000,
+    secretOrKey:"tokenSecret",
+    tokenExpireTime:60*60*24*7, //一周
+    cors_config:{
+      origin:(ctx) => {
+        let origin = ctx.request.headers.origin || ''
+        return origin
+      },
+      keepHeadersOnError: true,
+      credentials: true, //是否允许发送Cookie
+      allowMethods: ['GET', 'POST'], 
+      allowHeaders: ['Content-Type', 'Authorization', 'Accept']
+    }
+  },
 }
 
-const env = 'debug'
-module.exports = config[env]
+const env = process.env.NODE_ENV || 'development'
+const Config = configs[`${env}`]
+
+module.exports = {
+  Config
+}
