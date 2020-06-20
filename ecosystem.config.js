@@ -1,6 +1,6 @@
 module.exports = {
   apps : [{
-    name: 'erpServer',
+    name: 'erpServerAuto',
     script: 'start.js',
 
     // Options reference: https://pm2.io/doc/en/runtime/reference/ecosystem-file/
