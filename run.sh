@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/bash -ilex
+
 export SERVER_NAME=erpServerAuto
 
 npm install
