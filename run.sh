@@ -1,5 +1,8 @@
 #!/bin/bash
+export SERVER_NAME=erpServerAuto
 
 npm install
 
-npm run prd
+if ! pm2 restart $SERVER_NAME; then
+  pm2 start ecosystem.config.js --env production
+fi
