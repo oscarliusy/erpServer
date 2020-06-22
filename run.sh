@@ -1,6 +1,6 @@
 #!/bin/bash -ilex
 
-export SERVER_NAME=erpServerAuto
+export SERVER_NAME=erpServerAuto 
 
 pm2 stop $SERVER_NAME
 
