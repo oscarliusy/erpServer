@@ -31,6 +31,17 @@ const findInventoryMaterialList = async(params) =>{
   return data
 }
 
+const getIMtotalNumber = async()=>{
+  let totalNum = 0
+  await models.sequelize.query('SELECT sum(amount) FROM erpdb.inventorymaterial').spread(function (results, metadata) {
+    // results:[ TextRow { 'sum(amount)': '5129' } ]
+    totalNum = results[0]['sum(amount)']
+  });
+  return {
+    totalNum
+  }
+}
+
 const findIMListForInstork= async(params) =>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
@@ -329,5 +340,6 @@ module.exports = {
   instock,
   findInstockList,
   findInstockDetail,
-  findEditLog
+  findEditLog,
+  getIMtotalNumber
 }

@@ -118,4 +118,15 @@ router.post('/editlog',async(ctx)=>{
     data:data
   }
 })
+
+router.post('/total',async(ctx)=>{
+  const data = await materialController.getIMtotalNumber()
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
+
 module.exports = router
