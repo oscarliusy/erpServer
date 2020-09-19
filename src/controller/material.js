@@ -32,13 +32,18 @@ const findInventoryMaterialList = async(params) =>{
 }
 
 const getIMtotalNumber = async()=>{
-  let totalNum = 0
+  let totalNum = 0,totalCost = 0
   await models.sequelize.query('SELECT sum(amount) FROM erpdb.inventorymaterial').spread(function (results, metadata) {
     // results:[ TextRow { 'sum(amount)': '5129' } ]
     totalNum = results[0]['sum(amount)']
   });
+  await models.sequelize.query('SELECT sum(amount*price) FROM erpdb.inventorymaterial').spread(function (results, metadata) {
+    // results:[ TextRow { 'sum(amount*price)': '5129' } ]
+    totalCost = results[0]['sum(amount*price)']
+  });
   return {
-    totalNum
+    totalNum,
+    totalCost
   }
 }
 
