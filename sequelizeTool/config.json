@@ -2,7 +2,7 @@
   "development": {
     "username": "root",
     "password": "123456",
-    "database": "erpdb",
+    "database": "erpdb20200925",
     "host": "127.0.0.1",
     "dialect": "mysql",
     "logging":false,

@@ -87,6 +87,15 @@ const findInventoryMaterialById = async(id)=>{
   return data
 }
 
+const findIMByUniqueid = async(uniqueid)=>{
+  const result = await models.inventorymaterial.findOne({
+    where:{uniqueId:uniqueid}
+  })
+  let data = JSON.parse(JSON.stringify(result))
+  return data
+}
+
+
 const changeInventoryMaterial = async(params)=>{
   let IMObj = buildImObj(params)
   await models.inventorymaterial.update(IMObj,{
@@ -165,7 +174,8 @@ const createInstock = async(params) =>{
 
   //物料对象入库增加数量
   IMObjList.map((item,index)=>{
-    let amountNew = item.amount + params.data.dataSource[index].instockAmount
+    let amountAdd = findAmountByUid(item.uniqueId,params.data.dataSource)
+    let amountNew = item.amount + amountAdd
     item.update({
       amount:amountNew
     })
@@ -182,8 +192,27 @@ const createInstock = async(params) =>{
 
   //创建关联initem对象
   IMObjList.map((item,index)=>{
-    instockObj.setInventorymaterials(item,{through:{amountIn:params.data.dataSource[index].instockAmount}})
+    let amountAdd = findAmountByUid(item.uniqueId,params.data.dataSource)
+    //instockObj.setInventorymaterials(item,{through:{amountIn:params.data.dataSource[index].instockAmount}}) 失效，不明确原因
+    models.sequelize.query(`INSERT INTO initem (amountIn,master_id,materialName_id) VALUES (${amountAdd},${instockObj.id},${item.id})`)
   })
+}
+
+/**
+ * 
+ * @param {String} uid 物料的uniqueId 
+ * @param {Array} skus 入库的参数列表 
+ */
+const findAmountByUid = (uid,skus) =>{
+  let amount = 0
+  for(let i=0;i<skus.length;i++){
+    let _uid = skus[i].uniqueId.toString().trim()
+    if(_uid === uid){
+      amount = skus[i].instockAmount
+      break
+    }
+  }
+  return amount
 }
 
 /**
@@ -205,7 +234,7 @@ const findInstockDetail = async(params)=>{
     attributes:['amountIn'],
     include:[{
       model:models.inventorymaterial,
-      attributes:['uniqueId']
+      attributes:['uniqueId','amount']
     }],
   })
 
@@ -219,7 +248,8 @@ const instockDetailDataHandler = async(result)=>{
   data.list = result.rows.map(item=>{
     let temp = {}
     temp.uniqueId = item.inventorymaterial.uniqueId
-    temp.amount = item.amountIn
+    temp.amount = item.inventorymaterial.amount
+    temp.amountIn = item.dataValues.amountIn
     return temp
   })
   return data
@@ -346,5 +376,6 @@ module.exports = {
   findInstockList,
   findInstockDetail,
   findEditLog,
-  getIMtotalNumber
+  getIMtotalNumber,
+  findIMByUniqueid
 }
