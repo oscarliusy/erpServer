@@ -431,6 +431,7 @@ const preoutstockEdit = async(params) => {
 
 const preoutstockCreate = async(params)=>{
   try {
+    console.log('preoutstockCreate:',params.products)
     let addObj = await buildPreoutstockUpdataParams(params)
     let preoutstockObj = await models.preoutstock.create(addObj)
     await createPreoutstockItem(preoutstockObj,params)
@@ -449,27 +450,13 @@ const preoutstockCreate = async(params)=>{
 }
 
 const createPreoutstockItem = async(preoutstockObj,params)=>{
-  const productIds = params.products.map(item=>{
-    return item.id
-  })
+  let masterId = preoutstockObj.id
 
-  const productList = await models.producttemp.findAll({
-    where:{
-      id:productIds
-    }
-  })
-
-  productList.map((productItem,index)=>{
-    let _amount = 0
-    params.products.forEach(item=>{
-      if(item.id === productItem.id){
-        _amount = item.amount
-      }
-    })
-    preoutstockObj.setProducttemps(productItem,{through:{
-      amount:_amount
-    }})
-  })
+  for(let item of params.products){
+    let _amount = Number(item.amount)
+    let _id = Number(item.id)
+    await models.sequelize.query(`INSERT INTO preoutitem (amount,master_id,productName_id) VALUES (${_amount},${masterId},${_id})`)
+  }
 }
 
 const buildPreoutstockUpdataParams = async(params) =>{
