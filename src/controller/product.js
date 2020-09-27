@@ -634,25 +634,23 @@ const calcOutstockIndex = (params)=>{
 
 const imOutStockUpload = async(productList,outItemList)=>{
   let msg = '',status = 'succeed'
-  productList.forEach(async(productItem,productIndex)=>{
+
+  for(let productItem of productList){
     let _amountOut = 0
     outItemList.forEach(outItem=>{
-      if(productItem.id === outItem.productName_id) _amountOut = outItem.amountOut
+      if(productItem.id === outItem.productName_id){
+        _amountOut = outItem.amountOut
+      }
     })
+    let _imList = productItem.inventorymaterials
 
-    //遍历productItem的Inventorymaterials,更新其数量即可
-    productItem.inventorymaterials.forEach(imItem=>{
-      let _newAmount = imItem.amount - _amountOut*imItem.productmaterial.pmAmount
-      if(_newAmount < 0) msg = '物料数量已小于0,请及时修改或补充'
-      models.inventorymaterial.update({
-        amount:_newAmount
-      },{
-        where:{
-          id:imItem.id
-        }
-      })
-    })
-  })
+    for(let _imObj of _imList){
+      let _change =  _amountOut*_imObj.productmaterial.pmAmount
+      if(_imObj.amount - _change < 0) msg = `${_imObj.uniqueId}-物料数量已小于0,请及时修改或补充`
+      await models.sequelize.query(`UPDATE inventorymaterial SET amount = amount-${_change} WHERE id = ${_imObj.id}`)
+    }
+  }
+
   return {msg,status}
 }
 
@@ -730,7 +728,7 @@ const buildOutItem = async(outObj,preObj) =>{
     attributes:['id'],
     include:{
       model:models.inventorymaterial,
-      attributes:['id','amount']
+      attributes:['id','uniqueId','amount']
     }
   })
   //创建outitem关联,这里要加入单票的weight,volume,freightfee
@@ -739,7 +737,7 @@ const buildOutItem = async(outObj,preObj) =>{
     outAttributes.forEach(outItem=>{
       if(item.id === outItem.productName_id) temp = outItem
     })
-  
+    //这里有一定几率出问题
     outObj.setProducttemps(item,
       {through:
         {
@@ -751,7 +749,6 @@ const buildOutItem = async(outObj,preObj) =>{
         }
       })
   })
-
   let imRes = await imOutStockUpload(productList,outAttributes)
   return imRes
 }
