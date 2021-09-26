@@ -162,6 +162,7 @@ const instock = async(params)=>{
 
 const createInstock = async(params) =>{
   //找出物料对象
+  //如果数据库中的物料前后是有空格，无法入库-----待修复bug
   const IMuniqueIds = params.data.dataSource.map(item=>{
     return item.uniqueId
   })
