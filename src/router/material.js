@@ -9,7 +9,7 @@
      7.获取物料编辑日志 getMaterialEditLogs       /api/v1/material/editlog
      8.获取入库日志 getMaterialInstockLogs        /api/v1/material/instocklog
      9.查看入库详情 getInstockDetailById          /api/v1/material/instock/${id}
-     10.批量入库 (没设计呢)
+     10.批量入库 调用单一入库接口
   2.相关数据库操作放在adapter/database下
   3.逻辑处理放在controller/material下
   4.数据验证放在utils/validator下

@@ -356,10 +356,12 @@ const IMDataSearchHandler = (result) => {
 }
 
 const buildImObj = (params)=>{
+  var uniqueId = params.uniqueId
+  uniqueId = uniqueId.trim()
   return {
       amount: parseInt(params.amount),
       description: params.description,
-      uniqueId: params.uniqueId,
+      uniqueId: uniqueId,
       image: params.image,
       userPurchase_id: parseInt(params.userPurchase_id),
       price: parseFloat(params.price),
