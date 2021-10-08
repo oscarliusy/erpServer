@@ -33,13 +33,8 @@ const findProductList = async(params) =>{
 }
 
 const findPreoutstockList = async(params) =>{
-  const offset = parseInt(params.offset) || 0
-  const limited = parseInt(params.limited) || 10
-
   const result = await models.preoutstock.findAndCountAll({
     order:[['id','DESC']] ,//ASC:正序  DESC:倒序
-    offset:offset,
-    limit:limited,
     include:[{
       model:models.user,
       attributes:['name']
@@ -50,7 +45,6 @@ const findPreoutstockList = async(params) =>{
     }
   ]
   })
-
   let data = preoutstockDataHandler(result)
   return data
 }
@@ -171,7 +165,7 @@ const outstockDetailDataHandler = async(result)=>{
 const preoutstockDataHandler = (result) =>{
   let data = {}
   let preOutstockKeys = CONSTANT.PREOUTSTOCK_KEYS
-  data.total = result.count
+  data.total = result.rows.length
   data.list = result.rows.map(item=>{
     let temp = {}
     preOutstockKeys.forEach(key=>{
