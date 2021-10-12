@@ -18,3 +18,4 @@ sequelize-auto -h localhost -d erpdb -u root -x 123456 -p 3306 -t login_outitem
 
 # jenkins
 自动部署后端
+运行run.sh
