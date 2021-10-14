@@ -499,18 +499,30 @@ const findSites = async()=>{
 }
 
 /**
+ * 如果从前端传过来的sku在数据库中不存在，直接返回failed，并且返回不存在的产品
  * 1.根据products计算outitem的参数和outstock的参数
  * 2.创建outstock的对象
  * 3.创建outitem对象
  * 4.返回状态 
  */
 const outstockUpload = async(params)=>{
-  const {outstockParams,outItemList} = await buildOutstockParams(params)
-  let outstockObj = await models.outstock.create(outstockParams)
-  const {msg,status} = await buildOutstockItem(outstockObj,outItemList)
-  return {
-    status,
-    msg
+  const {outstockParams,outItemList,productNotFound} = await buildOutstockParams(params)
+  if(productNotFound.list.length > 0) {
+    var msg = 'Product not found'
+    var status = 'failed'
+    return {
+      productNotFound,
+      status,
+      msg
+    }
+  }else{
+    let outstockObj = await models.outstock.create(outstockParams)
+    var {msg,status} = await buildOutstockItem(outstockObj,outItemList)
+    return {
+      productNotFound,
+      status,
+      msg
+    }
   }
 }
 
@@ -523,7 +535,8 @@ const buildOutstockParams = async(params)=>{
     _total_freightfee,
     _total_volume,
     _total_weight,
-    outItemList
+    outItemList,
+    productNotFound
   } = await calcOutstockIndex(params)
 
   outstockParams.total_freightfee = _total_freightfee
@@ -531,7 +544,8 @@ const buildOutstockParams = async(params)=>{
   outstockParams.total_weight = _total_weight
   return {
     outstockParams,
-    outItemList
+    outItemList,
+    productNotFound
   }
 }
 
@@ -580,16 +594,30 @@ const buildOutstockItem = async(outstockObj,outItemList)=>{
 
 const calcOutstockIndex = (params)=>{
   return new Promise(async(resolve,reject)=>{
-    const productSkus = params.products.map(item=>{
-      return item.sku
-    })
-    const productList = await models.producttemp.findAll({
-      where:{
-        sku:productSkus
-      },
-      attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
-    })
-
+    // const productSkus = params.products.map(item=>{
+    //   return item.sku
+    // })
+    // const productList = await models.producttemp.findAll({
+    //   where:{
+    //     sku:productSkus
+    //   },
+    //   attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
+    // })
+    var productList = []
+    var productNotFound = {list:[]}
+    for(let i = 0; i < params.products.length; i++) {
+      var eachProduct = await models.producttemp.findOne({
+        where: {
+          sku: params.products[i].sku
+        },
+        attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
+      })
+      if(typeof(eachProduct)!="undefined" && eachProduct !="" && eachProduct !=null){
+        productList.push(eachProduct)
+      }else{
+        productNotFound.list.push(params.products[i])
+      }
+    }
     //console.log(productList)
   
     let _total_freightfee = 0,_total_volume = 0,_total_weight=0,outItemList=[]
@@ -621,7 +649,8 @@ const calcOutstockIndex = (params)=>{
       _total_freightfee,
       _total_volume,
       _total_weight,
-      outItemList
+      outItemList,
+      productNotFound
     })
   })
 }
