@@ -39,9 +39,26 @@ router.post('/edit',async(ctx)=>{
     data:data
   }
 })
+router.post('/pmrelation/list',async(ctx)=>{
+  const data = await productController.findAllRelationShip()
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+router.post('/pmrelation/search',async(ctx)=>{
+  const data = await productController.findRelationBySkuOrDesc(ctx.request.body.item)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 
 router.post('/add',async(ctx)=>{
   const data = await productController.createProduct(ctx.request.body)
+
   ctx.body = {
     code:200,
     errMsg:"",
@@ -84,6 +101,10 @@ router.post('/preoutstock/detail/:id',async(ctx)=>{
     data:data
   }
 })
+
+
+
+
 
 router.post('/preoutstock/search',async(ctx)=>{
   const data = await productController.productSearchForPreoutstock(ctx.request.body)

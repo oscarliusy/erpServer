@@ -1,6 +1,7 @@
 const models = require('../../sequelizeTool/models')
 const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
+const { QueryTypes } = require('sequelize');
 
 const findProductList = async(params) =>{
   const offset = parseInt(params.offset) || 0
@@ -52,7 +53,6 @@ const findPreoutstockList = async(params) =>{
 const findOutstockLog = async(params)=>{
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
-
   const result = await models.outstock.findAndCountAll({
     order:[['id','DESC']] ,//ASC:正序  DESC:倒序
     offset:offset,
@@ -131,12 +131,13 @@ const findOutstockDetailById = async(params)=>{
     attributes:['amountOut'],
     include:[{
       model:models.producttemp,
+      models:models.negative_stock,
       attributes:['sku','site_id']
     }]
   })
 
   const data = outstockDetailDataHandler(result)
-
+  console.log(result)
   return data
 }
 
@@ -517,9 +518,10 @@ const outstockUpload = async(params)=>{
     }
   }else{
     let outstockObj = await models.outstock.create(outstockParams)
-    var {msg,status} = await buildOutstockItem(outstockObj,outItemList)
+    var {msg,status,negativeStock} = await buildOutstockItem(outstockObj,outItemList)
     return {
       productNotFound,
+      negativeStock,
       status,
       msg
     }
@@ -585,11 +587,10 @@ const buildOutstockItem = async(outstockObj,outItemList)=>{
         }
       })
   })
-
-  const {msg,status} = await  imOutStockUpload(productList,outItemList)
+  const {msg,status,negativeStock} = await  imOutStockUpload(productList,outItemList,outstockObj.dataValues.id)
 
   //前面测试已通过,剩下一个物料数量扣除,存在一些问题,先不做
-  return {msg,status} 
+  return {msg,status,negativeStock} 
 }
 
 const calcOutstockIndex = (params)=>{
@@ -655,9 +656,10 @@ const calcOutstockIndex = (params)=>{
   })
 }
 
-const imOutStockUpload = async(productList,outItemList)=>{
+const imOutStockUpload = async(productList,outItemList,outstockId)=>{
   let msg = '',status = 'succeed'
-
+  var negativeStock = 0
+  var negative_stock = []
   for(let productItem of productList){
     let _amountOut = 0
     outItemList.forEach(outItem=>{
@@ -669,12 +671,22 @@ const imOutStockUpload = async(productList,outItemList)=>{
 
     for(let _imObj of _imList){
       let _change =  _amountOut*_imObj.productmaterial.pmAmount
-      if(_imObj.amount - _change < 0) msg = `${_imObj.uniqueId}-物料数量已小于0,请及时修改或补充`
+      if(_imObj.amount - _change < 0) {
+        msg = `${_imObj.uniqueId}-物料数量已小于0,请及时修改或补充`
+        negativeStock++
+        await models.negative_stock.create({
+          meterial_unique_id: _imObj.id,
+          outstock_id: outstockId,
+          pre_amount: _imObj.amount,
+          cur_amount: _imObj.amount - _change
+        })
+      }
+      
       await models.sequelize.query(`UPDATE inventorymaterial SET amount = amount-${_change} WHERE id = ${_imObj.id}`)
     }
   }
 
-  return {msg,status}
+  return {msg,status,negativeStock}
 }
 
 /**
@@ -1324,7 +1336,7 @@ const calMargin = (params) =>{
     _marginRate
   }
 }
-
+ 
 const calProductCostPercentage = (params)=>{
   purchasePrice = parseFloat(params.purchasePrice) || 0
   amazonSalePrice=parseFloat(params.amazonSalePrice) || 0
@@ -1336,6 +1348,94 @@ const calProductCostPercentage = (params)=>{
     fee = 100*purchasePrice/(amazonSalePrice*currency)
   }     
   return fee.toFixed(2)
+}
+
+
+/**
+ * 从数据库中找到所有数据
+ * 然后将数据组装成map，将一个产品的物料信息存到一起，以productSku为key，所有的信息为value(包括所有的物料)
+ * 然后再组装成固定的格式。例如：第一个产品有物料5个，第二产品只有2个物料，那么将第二个产品的物料名称和数量补上，但是value设置成 ""
+ */
+var findAllRelationShip = async function(){
+  let sql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
+  FROM productmaterial pm 
+  INNER JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
+  INNER JOIN producttemp pro ON pm.pmProduct_id = pro.id
+  ORDER BY pro.id DESC
+  `
+  const [sqlResults, metadata] =await models.sequelize.query(sql)
+  let data = buildData(sqlResults)
+  return data
+}
+
+var findRelationBySkuOrDesc = async function(params){
+  params = "%" + params + "%"
+  let sql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
+    FROM productmaterial pm 
+    INNER JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
+    INNER JOIN producttemp pro ON pm.pmProduct_id = pro.id
+    WHERE pro.sku LIKE $1 OR pro.description LIKE $1
+    ORDER BY pro.id DESC
+  `
+  //绑定参数，防止SQL注入
+  const [sqlResults, metadata] =await models.sequelize.query(sql,{
+    bind:[params],
+    logging:true
+  })
+  let data = buildData(sqlResults)
+  return data
+}
+
+var buildData = async function(sqlResults){
+  let dataMap = transformDataToMap(sqlResults)
+  let data = buildRelationData(dataMap)
+  return data
+}
+
+var transformDataToMap = function(data){
+  var map = {}
+  let dataMap = {}
+  let max = 1
+  data.map(item=>{
+    let sku = item.sku
+    if(map[sku] == undefined){
+      map[sku] = 1
+      dataMap[sku] = item
+    }else{
+      let count = map[sku] + 1
+      map[sku] = count
+      let meterialName = "uniqueId"+count
+      let pmAmountName = "pmAmount" + count
+      dataMap[sku][meterialName] = item.uniqueId1
+      dataMap[sku][pmAmountName] = item.pmAmount1
+      if(max < count){
+        max = count
+      }
+    }
+  })
+  return {
+    data:dataMap,
+    maxMeterialCount:max
+  }
+}
+
+var buildRelationData = function(dataMap){
+  let result = []
+  let keys = Object.keys(dataMap.data)
+  let data = dataMap.data
+  keys.map(item=>{
+    for(var j=2; j<= dataMap.maxMeterialCount; j++){
+      let meterialName = "uniqueId"+j
+      if(data[item][meterialName] == undefined){
+        let meterialName = "uniqueId"+j
+        let pmAmountName = "pmAmount" + j
+        data[item][meterialName] = ""
+        data[item][pmAmountName] = ""
+      }
+    }
+    result.push(data[item])
+  })
+  return result
 }
 
 module.exports = {
@@ -1355,5 +1455,8 @@ module.exports = {
   outstockUpload,
   findOutstockLog,
   findOutstockDetailById,
-  findEditLog
+  findEditLog,
+
+  findAllRelationShip,
+  findRelationBySkuOrDesc
 }
