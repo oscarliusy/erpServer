@@ -1437,6 +1437,18 @@ var buildRelationData = function(dataMap){
   })
   return result
 }
+var showNoneProductMeterial = async function(){
+  let sql =  `SELECT DISTINCT uniqueId,description FROM inventorymaterial im WHERE im.id NOT IN (
+    SELECT pmMaterial_id FROM productmaterial
+  )
+  `
+  const [sqlResults, metadata] =await models.sequelize.query(sql)
+  let data = []
+  sqlResults.map(item => {
+    data.push(item)
+  })
+  return data
+}
 
 module.exports = {
   findProductList,
@@ -1456,7 +1468,7 @@ module.exports = {
   findOutstockLog,
   findOutstockDetailById,
   findEditLog,
-
   findAllRelationShip,
-  findRelationBySkuOrDesc
+  findRelationBySkuOrDesc,
+  showNoneProductMeterial
 }

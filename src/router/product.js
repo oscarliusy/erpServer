@@ -55,6 +55,14 @@ router.post('/pmrelation/search',async(ctx)=>{
     data:data
   }
 })
+router.post('/pmrelation/showmeterial',async(ctx)=>{
+  const data = await productController.showNoneProductMeterial()
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
 
 router.post('/add',async(ctx)=>{
   const data = await productController.createProduct(ctx.request.body)
