@@ -54,6 +54,15 @@ router.post('/edit',async(ctx)=>{
   }
 })
 
+router.post('/delete',async(ctx)=>{
+  const data = await materialController.deleteMaterial(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 router.post('/add',async(ctx)=>{
   const data = await materialController.addInventoryMaterial(ctx.request.body)
   ctx.body = {

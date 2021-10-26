@@ -116,6 +116,31 @@ const changeInventoryMaterial = async(params)=>{
   }
 }
 
+const deleteMaterial = async function(params) {
+  let getProductSql = `SELECT DISTINCT pro.id,pro.sku FROM productmaterial pm
+	inner JOIN producttemp pro ON pm.pmProduct_id = pro.id
+WHERE pm.pmMaterial_id = ${params.id}`
+
+  let message = ""
+  let [productResult, metadata] = await models.sequelize.query(getProductSql)
+  
+  if(productResult.length != 0) {
+    let idList = []
+    productResult.map(item =>{
+      idList.push(item.sku)
+    })
+    message = "有如下产品与该物料(SKU)关联：" + idList.toString()
+    
+  }else{
+    let deleteSql = `delete from inventorymaterial where id = $1`
+    await models.sequelize.query(deleteSql,{
+      bind:[params.id]
+    })
+    message = "success"
+  }
+  return message
+}
+
  /**
   * 1.build数据
   * 2.查找uniqueId重名
@@ -380,5 +405,6 @@ module.exports = {
   findInstockDetail,
   findEditLog,
   getIMtotalNumber,
-  findIMByUniqueid
+  findIMByUniqueid,
+  deleteMaterial
 }
