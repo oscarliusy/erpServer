@@ -1378,7 +1378,7 @@ var findRelationBySkuOrDesc = async function(params){
   //绑定参数，防止SQL注入
   const [sqlResults, metadata] =await models.sequelize.query(sql,{
     bind:[params],
-    logging:true
+    logging:false
   })
   let data = buildData(sqlResults)
   return data
