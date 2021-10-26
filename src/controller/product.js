@@ -1,7 +1,6 @@
 const models = require('../../sequelizeTool/models')
 const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
-const { QueryTypes } = require('sequelize');
 
 const findProductList = async(params) =>{
   const offset = parseInt(params.offset) || 0
@@ -137,7 +136,6 @@ const findOutstockDetailById = async(params)=>{
   })
 
   const data = outstockDetailDataHandler(result)
-  console.log(result)
   return data
 }
 
@@ -1437,6 +1435,7 @@ var buildRelationData = function(dataMap){
   })
   return result
 }
+
 var showNoneProductMeterial = async function(){
   let sql =  `SELECT DISTINCT uniqueId,description FROM inventorymaterial im WHERE im.id NOT IN (
     SELECT pmMaterial_id FROM productmaterial
@@ -1448,6 +1447,30 @@ var showNoneProductMeterial = async function(){
     data.push(item)
   })
   return data
+}
+
+var deleteProduct = async function(params){
+  let sqlSetKeyNull = `UPDATE producttemp SET creater_id = NULL,site_id = NULL WHERE id = ${params}`
+  let sqlPM = `DELETE FROM productmaterial WHERE pmProduct_id = ${params}`
+  let sqlDelProduct = `DELETE FROM producttemp WHERE id =  ${params}`
+  let msg = ""
+  let code = 200
+  const t = await models.sequelize.transaction();
+  try {
+    await models.sequelize.query(sqlSetKeyNull,{transaction:t})
+    await models.sequelize.query(sqlPM,{transaction:t})
+    await models.sequelize.query(sqlDelProduct,{transaction:t})
+    await t.commit()
+    msg = "删除成功"
+  }catch (err) {
+    code = 500
+    msg = err.message
+    await t.rollback()
+  }
+  return {
+    code:code,
+    msg:msg
+  }
 }
 
 module.exports = {
@@ -1470,5 +1493,6 @@ module.exports = {
   findEditLog,
   findAllRelationShip,
   findRelationBySkuOrDesc,
-  showNoneProductMeterial
+  showNoneProductMeterial,
+  deleteProduct
 }

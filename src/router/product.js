@@ -39,6 +39,7 @@ router.post('/edit',async(ctx)=>{
     data:data
   }
 })
+
 router.post('/pmrelation/list',async(ctx)=>{
   const data = await productController.findAllRelationShip()
   ctx.body = {
@@ -47,6 +48,16 @@ router.post('/pmrelation/list',async(ctx)=>{
     data:data
   }
 })
+
+router.post('/delete',async(ctx)=>{
+  let data = await productController.deleteProduct(ctx.request.body.id)
+  ctx.body = {
+    code: data.code,
+    errMsg:"",
+    data: data
+  }
+})
+
 router.post('/pmrelation/search',async(ctx)=>{
   const data = await productController.findRelationBySkuOrDesc(ctx.request.body.item)
   ctx.body = {
