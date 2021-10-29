@@ -170,6 +170,28 @@ const addInventoryMaterial = async(params)=>{
   }
 }
 
+const uploadNewMaterial = async(params)=>{
+  const t = await models.sequelize.transaction();
+  params.data.map(item=>{
+    item["userPurchase_id"] = params.user
+  })
+  let code
+  try{
+    await models.inventorymaterial.bulkCreate(params.data)
+    message = "导入成功"
+    code = 200
+    await t.commit()
+  }catch(err){
+    message = "导入失败"
+    await t.rollback()
+    code = 500
+  }
+  return {
+    msg:message,
+    code:code
+  }
+}
+
 /**
  *零星入库 
  *0.根据uniqueId查询物料对象,更新其数量
@@ -406,5 +428,6 @@ module.exports = {
   findEditLog,
   getIMtotalNumber,
   findIMByUniqueid,
-  deleteMaterial
+  deleteMaterial,
+  uploadNewMaterial
 }

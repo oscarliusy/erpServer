@@ -72,6 +72,15 @@ router.post('/add',async(ctx)=>{
   }
 })
 
+router.post('/newUpload',async(ctx)=>{
+  const data = await materialController.uploadNewMaterial(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 router.post('/purchaserList',async(ctx)=>{
   const data = await materialController.findPurchasers()
   ctx.body = {
