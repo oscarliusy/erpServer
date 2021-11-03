@@ -30,6 +30,7 @@ module.exports = (sequelize, DataTypes) => {
     adcost:DataTypes.DECIMAL,
     freightFee: DataTypes.DECIMAL,
     tagpath: DataTypes.STRING(150),
+    brand: DataTypes.INTEGER(11)
   }, {});
   producttemp.associate = function(models) {
     //物料与产品多对多

@@ -29,7 +29,8 @@ const findProductList = async (params) => {
     include: [models.user, models.site, models.inventorymaterial]
   })
 
-  let data = productDataHandler(result)
+  let data = await productDataHandler(result)
+  data = await changeBrandIdToName(data)
   return data
 }
 
@@ -216,7 +217,7 @@ const productDataHandler = async (result) => {
   let currencyMap = await buildCurrencyMap()
 
   data.total = result.count
-  data.list = result.rows.map(item => {
+  data.list = result.rows.map( item => {
     let temp = {}
     PRODUCT_KEYS.forEach(key => {
       if (key === 'site') {
@@ -238,13 +239,25 @@ const productDataHandler = async (result) => {
           })
         }
         temp.materials = materialList
-      }
-      else {
+      }else {
         temp[key] = item[key]
       }
     })
     return temp
   })
+  return data
+}
+
+const changeBrandIdToName = async (data) => {
+  let brandQuerySql = `SELECT name FROM brand WHERE id = $1`
+  let idx = 0
+  for await (let product of data.list){
+    let [result, metadata] = await models.sequelize.query(brandQuerySql,{
+      bind:[product.brand]
+    })
+    data.list[idx].brandName = result[0].name
+    idx++
+  }
   return data
 }
 

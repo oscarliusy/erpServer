@@ -1,7 +1,7 @@
 const IMKEYS = ['id','uniqueId','description','amount','price','userPurchase_id','image']
 const INSTOCKKEYS = ['id','c_time','userInstock_id','description']
 const PRODUCTKEYS = [
-  'id','sku','childAsin','title','description','image','site',
+  'id','sku','childAsin','title','description','image','site',`brand`,
   'creator','c_time','purchasePrice','weight',
   'length','width','height','volumeWeight','packageFee','opFee',
   'fbaFullfillmentFee','amazonReferralFee','payoneerServiceFee',
