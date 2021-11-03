@@ -217,7 +217,7 @@ const productDataHandler = async (result) => {
   let currencyMap = await buildCurrencyMap()
 
   data.total = result.count
-  data.list = result.rows.map( item => {
+  data.list = result.rows.map(item => {
     let temp = {}
     PRODUCT_KEYS.forEach(key => {
       if (key === 'site') {
@@ -239,7 +239,7 @@ const productDataHandler = async (result) => {
           })
         }
         temp.materials = materialList
-      }else {
+      } else {
         temp[key] = item[key]
       }
     })
@@ -251,9 +251,9 @@ const productDataHandler = async (result) => {
 const changeBrandIdToName = async (data) => {
   let brandQuerySql = `SELECT name FROM brand WHERE id = $1`
   let idx = 0
-  for await (let product of data.list){
-    let [result, metadata] = await models.sequelize.query(brandQuerySql,{
-      bind:[product.brand]
+  for await (let product of data.list) {
+    let [result, metadata] = await models.sequelize.query(brandQuerySql, {
+      bind: [product.brand]
     })
     data.list[idx].brandName = result[0].name
     idx++
@@ -1507,7 +1507,7 @@ var createProductList = async function (data) {
   res.allSitesExist = siteExistInfo.allSitesFind
   if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.allSitesExist) {
     let insertResult = await insertProduct(data, siteExistInfo.siteMap, materialExistInfo.materailMap)
-    res.proResult = insertResult
+    res.insertResult = insertResult
   }
 
   return res
@@ -1602,7 +1602,7 @@ var findSiteExists = async function (data) {
 }
 
 var insertProduct = async function (data, siteMap, materailMap) {
-  let productInsertSql = `INSERT INTO producttemp (sku,title,description,site_id) VALUES ($1,$2,$3,$4)`
+  let productInsertSql = `INSERT INTO producttemp (sku,title,description,site_id,creater_id) VALUES ($1,$2,$3,$4,$5)`
   let findProductIdSql = `SELECT id FROM producttemp WHERE sku = $1`
   let productMaterialInsertSql = `INSERT INTO productmaterial (pmAmount,pmProduct_id,pmMaterial_id) VALUES ($1,$2,$3)`
   let message = ``, errorRow = ``
@@ -1611,8 +1611,9 @@ var insertProduct = async function (data, siteMap, materailMap) {
   try {
     for await (let product of data) {
       errorRow = product.sku
+      let creater_id = product.creater_id
       await models.sequelize.query(productInsertSql, {
-        bind: [product.sku, product.title, product.description, siteMap.get(product.site)],
+        bind: [product.sku, product.title, product.description, siteMap.get(product.site), product.creater_id],
         transaction: t
       })
       let [idResult, metadata] = await models.sequelize.query(findProductIdSql, {
