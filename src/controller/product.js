@@ -1,80 +1,81 @@
 const models = require('../../sequelizeTool/models')
 const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
+const { get } = require('../router/product')
 
-const findProductList = async(params) =>{
+const findProductList = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
 
   //多字段模糊查询
   let where = {}
-  if(keyword){
+  if (keyword) {
     where = {
-      [Op.or]:[
-        {description:{[Op.like]:'%' + keyword + '%'}},
-        {sku:{[Op.like]:'%' + keyword + '%'}},
-        {childAsin:{[Op.like]:'%' + keyword + '%'}},
-        {title:{[Op.like]:'%' + keyword + '%'}}
+      [Op.or]: [
+        { description: { [Op.like]: '%' + keyword + '%' } },
+        { sku: { [Op.like]: '%' + keyword + '%' } },
+        { childAsin: { [Op.like]: '%' + keyword + '%' } },
+        { title: { [Op.like]: '%' + keyword + '%' } }
       ]
     }
   }
 
   const result = await models.producttemp.findAndCountAll({
     //order:[['id','DESC']] ,//ASC:正序  DESC:倒序
-    where:where,
-    offset:offset,
-    limit:limited,
-    include:[models.user,models.site,models.inventorymaterial]
+    where: where,
+    offset: offset,
+    limit: limited,
+    include: [models.user, models.site, models.inventorymaterial]
   })
 
   let data = productDataHandler(result)
   return data
 }
 
-const findPreoutstockList = async(params) =>{
+const findPreoutstockList = async (params) => {
   const result = await models.preoutstock.findAndCountAll({
-    order:[['id','DESC']] ,//ASC:正序  DESC:倒序
-    include:[{
-      model:models.user,
-      attributes:['name']
+    order: [['id', 'DESC']],//ASC:正序  DESC:倒序
+    include: [{
+      model: models.user,
+      attributes: ['name']
     }
-    ,{
-      model:models.producttemp,
-      attributes:['sku']
+      , {
+      model: models.producttemp,
+      attributes: ['sku']
     }
-  ]
+    ]
   })
   let data = preoutstockDataHandler(result)
   return data
 }
 
-const findOutstockLog = async(params)=>{
+const findOutstockLog = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const result = await models.outstock.findAndCountAll({
-    order:[['id','DESC']] ,//ASC:正序  DESC:倒序
-    offset:offset,
-    limit:limited,
-    include:[{
-      model:models.user,
-      attributes:['name']
+    order: [['id', 'DESC']],//ASC:正序  DESC:倒序
+    offset: offset,
+    limit: limited,
+    include: [{
+      model: models.user,
+      attributes: ['name']
     }]
   })
   let data = OutstockDataHandler(result)
   return data
 }
 
-const OutstockDataHandler = (result)=>{
+const OutstockDataHandler = (result) => {
   let data = {}
   let outstockKeys = CONSTANT.OUTSTOCKKEYS
   data.total = result.count
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    outstockKeys.forEach(key=>{
-      if(key === 'userOutstock_id'){
+    outstockKeys.forEach(key => {
+      if (key === 'userOutstock_id') {
         temp.user = item.user.name
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -83,32 +84,32 @@ const OutstockDataHandler = (result)=>{
   return data
 }
 
-const findEditLog = async(params) =>{
+const findEditLog = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const result = await models.log.findAndCountAll({
-    order:[['id','DESC']] ,
-    offset:offset,
-    limit:limited,
-    include:[models.user],
-    where:{
-      type:CONSTANT.LOG_TYPES.PRODUCT
+    order: [['id', 'DESC']],
+    offset: offset,
+    limit: limited,
+    include: [models.user],
+    where: {
+      type: CONSTANT.LOG_TYPES.PRODUCT
     }
   })
   let data = editLogDataHandler(result)
   return data
 }
 
-const editLogDataHandler = (result) =>{
+const editLogDataHandler = (result) => {
   let data = {}
   data.total = result.count
   let editKey = CONSTANT.MATERIAL_EDITLOG_KEYS
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    editKey.forEach(key=>{
-      if(key === 'user'){
+    editKey.forEach(key => {
+      if (key === 'user') {
         temp.user = item.user.name
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -117,21 +118,21 @@ const editLogDataHandler = (result) =>{
   return data
 }
 
-const findOutstockDetailById = async(params)=>{
+const findOutstockDetailById = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const result = await models.outitem.findAndCountAll({
-    where:{
-      master_id:params.id
+    where: {
+      master_id: params.id
     },
-    order:[['amountOut','DESC']] ,//ASC:正序  DESC:倒序
-    offset:offset,
-    limit:limited,
-    attributes:['amountOut'],
-    include:[{
-      model:models.producttemp,
-      models:models.negative_stock,
-      attributes:['sku','site_id']
+    order: [['amountOut', 'DESC']],//ASC:正序  DESC:倒序
+    offset: offset,
+    limit: limited,
+    attributes: ['amountOut'],
+    include: [{
+      model: models.producttemp,
+      models: models.negative_stock,
+      attributes: ['sku', 'site_id']
     }]
   })
 
@@ -139,21 +140,21 @@ const findOutstockDetailById = async(params)=>{
   return data
 }
 
-const outstockDetailDataHandler = async(result)=>{
+const outstockDetailDataHandler = async (result) => {
   let data = {}
   const siteMap = await models.site.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
   let outstockKeys = CONSTANT.OUTSTOCK_DETAIL_KEYS
   data.total = result.count
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    outstockKeys.forEach(key=>{
-      if(key === 'amount'){
+    outstockKeys.forEach(key => {
+      if (key === 'amount') {
         temp[key] = item.amountOut
-      }else if(key === 'site'){
-        temp[key] = getSiteName(siteMap,item.producttemp.site_id)
-      }else if(key === 'sku'){
+      } else if (key === 'site') {
+        temp[key] = getSiteName(siteMap, item.producttemp.site_id)
+      } else if (key === 'sku') {
         temp[key] = item.producttemp[key]
       }
     })
@@ -161,24 +162,24 @@ const outstockDetailDataHandler = async(result)=>{
   })
   return data
 }
-const preoutstockDataHandler = (result) =>{
+const preoutstockDataHandler = (result) => {
   let data = {}
   let preOutstockKeys = CONSTANT.PREOUTSTOCK_KEYS
   data.total = result.rows.length
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    preOutstockKeys.forEach(key=>{
-      if(key === 'user_id'){
+    preOutstockKeys.forEach(key => {
+      if (key === 'user_id') {
         temp.user = item.user.name
-      }else if(key === 'products'){
-        let _products = item.producttemps.map(proItem=>{
+      } else if (key === 'products') {
+        let _products = item.producttemps.map(proItem => {
           return {
-            sku:proItem.sku,
-            amount:proItem.preoutitem.amount
+            sku: proItem.sku,
+            amount: proItem.preoutitem.amount
           }
         })
         temp.products = _products
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -187,49 +188,49 @@ const preoutstockDataHandler = (result) =>{
   return data
 }
 
-const buildCurrencyMap = async()=>{
+const buildCurrencyMap = async () => {
   const result = await models.site.findAndCountAll({
-    include:[{
-      model:models.currency
+    include: [{
+      model: models.currency
     }]
   })
   const siteCurrencyMap = siteCurrencyDataHandler(result)
   return siteCurrencyMap
 }
 
-const siteCurrencyDataHandler = (result) =>{
+const siteCurrencyDataHandler = (result) => {
   let data = {}
-  result.rows.forEach(item=>{
+  result.rows.forEach(item => {
     data[item.name] = {}
     data[item.name]['currencyName'] = item.currency.name
     data[item.name]['exchangeRate'] = item.currency.exchangeRateRMB
-   })
+  })
   return data
 }
 /**
  * 需要在前6位显示id,site,sku,childAsin,title,image,后面随意
  */
-const productDataHandler = async(result) => {
+const productDataHandler = async (result) => {
   let data = {}
   let PRODUCT_KEYS = CONSTANT.PRODUCTKEYS
   let currencyMap = await buildCurrencyMap()
 
   data.total = result.count
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    PRODUCT_KEYS.forEach(key=>{
-      if(key === 'site'){
+    PRODUCT_KEYS.forEach(key => {
+      if (key === 'site') {
         temp.site = item.site.name
         temp.currency = currencyMap[item.site.name].currencyName
         temp.exchangeRate = currencyMap[item.site.name].exchangeRate
       }
-      else if(key === 'creator'){
+      else if (key === 'creator') {
         temp.creator = item.user.name
       }
-      else if(key == "materials"){
+      else if (key == "materials") {
         let materialList = []
-        if(item.inventorymaterials.length){
-          materialList = item.inventorymaterials.map(imItem=>{
+        if (item.inventorymaterials.length) {
+          materialList = item.inventorymaterials.map(imItem => {
             let matItem = {}
             matItem.name = imItem.uniqueId || ''
             matItem.amount = imItem.productmaterial.pmAmount || ''
@@ -238,7 +239,7 @@ const productDataHandler = async(result) => {
         }
         temp.materials = materialList
       }
-      else{
+      else {
         temp[key] = item[key]
       }
     })
@@ -247,47 +248,47 @@ const productDataHandler = async(result) => {
   return data
 }
 
-const productSearchForPreoutstock = async(params) =>{
+const productSearchForPreoutstock = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
 
   let where = {}
-  if(keyword){
+  if (keyword) {
     where = {
-      [Op.or]:[
-        {description:{[Op.like]:'%' + keyword + '%'}},
-        {sku:{[Op.like]:'%' + keyword + '%'}},
-        {childAsin:{[Op.like]:'%' + keyword + '%'}},
-        {title:{[Op.like]:'%' + keyword + '%'}}
+      [Op.or]: [
+        { description: { [Op.like]: '%' + keyword + '%' } },
+        { sku: { [Op.like]: '%' + keyword + '%' } },
+        { childAsin: { [Op.like]: '%' + keyword + '%' } },
+        { title: { [Op.like]: '%' + keyword + '%' } }
       ]
     }
   }
 
   const result = await models.producttemp.findAndCountAll({
-    order:[['id','ASC']] ,//ASC:正序  DESC:倒序
-    where:where,
-    offset:offset,
-    limit:limited,
-    attributes:['id','sku','childAsin','title'],
-    include:[models.site]
+    order: [['id', 'ASC']],//ASC:正序  DESC:倒序
+    where: where,
+    offset: offset,
+    limit: limited,
+    attributes: ['id', 'sku', 'childAsin', 'title'],
+    include: [models.site]
   })
 
   let data = product4preoutstockDataHandler(result)
-  
+
   return data
 }
 
-const product4preoutstockDataHandler = (result) =>{
+const product4preoutstockDataHandler = (result) => {
   let data = {}
   data.total = result.count
   let PRODUCT_KEYS = CONSTANT.PRODUCT_FOR_PREOUTSTOCK_KEYS
-  data.list = result.rows.map(item =>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    PRODUCT_KEYS.forEach(key=>{
-      if(key === 'site'){
+    PRODUCT_KEYS.forEach(key => {
+      if (key === 'site') {
         temp.site = item.site.name
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -296,17 +297,17 @@ const product4preoutstockDataHandler = (result) =>{
   return data
 }
 
-const findPreoutstockById = async(id)=>{
+const findPreoutstockById = async (id) => {
   const usersList = await models.user.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
 
   const result = await models.preoutstock.findOne({
-    where:{id:id},
-    include:[
+    where: { id: id },
+    include: [
       {
-        model:models.producttemp,
-        attributes:['id','sku']
+        model: models.producttemp,
+        attributes: ['id', 'sku']
       }
     ]
   })
@@ -316,14 +317,14 @@ const findPreoutstockById = async(id)=>{
   return data
 }
 
-const handlePreoutstockData = (result) =>{
+const handlePreoutstockData = (result) => {
   let data = JSON.parse(JSON.stringify(result))
   delete data.Producttemps
-  let products = result.producttemps.map(item=>{
+  let products = result.producttemps.map(item => {
     return {
-      id:item.id,
-      sku:item.sku,
-      amount:item.preoutitem.amount
+      id: item.id,
+      sku: item.sku,
+      amount: item.preoutitem.amount
     }
   })
   data.products = products
@@ -335,54 +336,54 @@ const handlePreoutstockData = (result) =>{
  * 2.查询出productObj,配合amount送入calcVolume等三个函数
  * 3.计算出结果后返回.
  */
-const calcPreoutstock = async(params) =>{
-  try{
+const calcPreoutstock = async (params) => {
+  try {
     const {
       _total_freightfee,
       _total_volume,
       _total_weight
     } = await calcIndex(params)
     return {
-      status:'succeed',
-      msg:'已计算并更新参数',
-      indexes:{
-        total_freightfee:_total_freightfee,
-        total_volume:_total_volume,
-        total_weight:_total_weight
+      status: 'succeed',
+      msg: '已计算并更新参数',
+      indexes: {
+        total_freightfee: _total_freightfee,
+        total_volume: _total_volume,
+        total_weight: _total_weight
       }
     }
-  }catch(err){
-    console.log('calcPreoutstock-ERROR:',err)
+  } catch (err) {
+    console.log('calcPreoutstock-ERROR:', err)
     return {
-      status:'failed',
-      msg:'数据错误,计算失败',
+      status: 'failed',
+      msg: '数据错误,计算失败',
     }
   }
-  
+
 }
 
-const calcIndex = (params)=>{
-  return new Promise(async(resolve,reject)=>{
-    const productIds = params.products.map(item=>{
+const calcIndex = (params) => {
+  return new Promise(async (resolve, reject) => {
+    const productIds = params.products.map(item => {
       return item.id
     })
-  
+
     const productList = await models.producttemp.findAll({
-      where:{
-        id:productIds
+      where: {
+        id: productIds
       },
-      attributes:['id','dhlShippingFee','freightFee','weight','length','width','height'],
+      attributes: ['id', 'dhlShippingFee', 'freightFee', 'weight', 'length', 'width', 'height'],
     })
-  
-    let _total_freightfee = 0,_total_volume = 0,_total_weight=0
-    productList.forEach((productItem,index)=>{
+
+    let _total_freightfee = 0, _total_volume = 0, _total_weight = 0
+    productList.forEach((productItem, index) => {
       let _amount
-      params.products.forEach(paramItem=>{
-        if(paramItem.id === productItem.id) _amount = paramItem.amount
+      params.products.forEach(paramItem => {
+        if (paramItem.id === productItem.id) _amount = paramItem.amount
       })
-      _total_freightfee += Number(calcFreightFee(productItem,_amount))
-      _total_volume += Number(calcVolume(productItem,_amount))
-      _total_weight += Number(calcWeight(productItem,_amount))
+      _total_freightfee += Number(calcFreightFee(productItem, _amount))
+      _total_volume += Number(calcVolume(productItem, _amount))
+      _total_weight += Number(calcWeight(productItem, _amount))
     })
     resolve({
       _total_freightfee,
@@ -399,60 +400,60 @@ const calcIndex = (params)=>{
  * 4.更新pre对象
  * 5.删除以前的关联项,变为新的关联项
  */
-const preoutstockEdit = async(params) => {
-  try{
+const preoutstockEdit = async (params) => {
+  try {
     let updateObj = await buildPreoutstockUpdataParams(params)
-    await models.preoutstock.update(updateObj,{
-      where:{
-        id:params.id
+    await models.preoutstock.update(updateObj, {
+      where: {
+        id: params.id
       }
     })
     updatePreoutstockItem(params)
     return {
-      status:'succeed',
-      msg:'成功保存修改'
+      status: 'succeed',
+      msg: '成功保存修改'
     }
   }
-  catch(err){
-    console.log('preoutstockEdit-ERROR',err)
+  catch (err) {
+    console.log('preoutstockEdit-ERROR', err)
     return {
-      status:'failed',
-      msg:'修改失败,出现错误'
+      status: 'failed',
+      msg: '修改失败,出现错误'
     }
   }
 }
 
-const preoutstockCreate = async(params)=>{
+const preoutstockCreate = async (params) => {
   try {
-    console.log('preoutstockCreate:',params.products)
+    console.log('preoutstockCreate:', params.products)
     let addObj = await buildPreoutstockUpdataParams(params)
     let preoutstockObj = await models.preoutstock.create(addObj)
-    await createPreoutstockItem(preoutstockObj,params)
+    await createPreoutstockItem(preoutstockObj, params)
     return {
-      status:'succeed',
-      msg:'已成功创建预出库项'
+      status: 'succeed',
+      msg: '已成功创建预出库项'
     }
   }
-  catch(err){
-    console.log('preoutstockCreate-ERROR:',err)
+  catch (err) {
+    console.log('preoutstockCreate-ERROR:', err)
     return {
-      status:'failed',
-      msg:'创建失败'
+      status: 'failed',
+      msg: '创建失败'
     }
   }
 }
 
-const createPreoutstockItem = async(preoutstockObj,params)=>{
+const createPreoutstockItem = async (preoutstockObj, params) => {
   let masterId = preoutstockObj.id
 
-  for(let item of params.products){
+  for (let item of params.products) {
     let _amount = Number(item.amount)
     let _id = Number(item.id)
     await models.sequelize.query(`INSERT INTO preoutitem (amount,master_id,productName_id) VALUES (${_amount},${masterId},${_id})`)
   }
 }
 
-const buildPreoutstockUpdataParams = async(params) =>{
+const buildPreoutstockUpdataParams = async (params) => {
   const {
     _total_freightfee,
     _total_volume,
@@ -460,39 +461,39 @@ const buildPreoutstockUpdataParams = async(params) =>{
   } = await calcIndex(params)
   let preUpdateObj = {
     ...params,
-    ptime:Date.now(),
-    total_freightfee:_total_freightfee,
-    total_volume:_total_volume,
-    total_weight:_total_weight
+    ptime: Date.now(),
+    total_freightfee: _total_freightfee,
+    total_volume: _total_volume,
+    total_weight: _total_weight
   }
   delete preUpdateObj.id
   delete preUpdateObj.products
-  
+
   return preUpdateObj
 }
 
-const updatePreoutstockItem = async(params) =>{
+const updatePreoutstockItem = async (params) => {
   await models.preoutitem.destroy({
-    where:{
-      master_id:params.id
+    where: {
+      master_id: params.id
     }
   })
-  try{
-    params.products.forEach(item=>{
+  try {
+    params.products.forEach(item => {
       models.preoutitem.create({
-        master_id:params.id,
-        productName_id:item.id,
-        amount:item.amount
+        master_id: params.id,
+        productName_id: item.id,
+        amount: item.amount
       })
     })
   }
-  catch(err){
-    console.log('updatePreoutstockItem-ERROE:',err)
+  catch (err) {
+    console.log('updatePreoutstockItem-ERROE:', err)
   }
 }
-const findSites = async()=>{
+const findSites = async () => {
   const siteMap = await models.site.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
   return siteMap
 }
@@ -504,9 +505,9 @@ const findSites = async()=>{
  * 3.创建outitem对象
  * 4.返回状态 
  */
-const outstockUpload = async(params)=>{
-  const {outstockParams,outItemList,productNotFound} = await buildOutstockParams(params)
-  if(productNotFound.list.length > 0) {
+const outstockUpload = async (params) => {
+  const { outstockParams, outItemList, productNotFound } = await buildOutstockParams(params)
+  if (productNotFound.list.length > 0) {
     var msg = 'Product not found'
     var status = 'failed'
     return {
@@ -514,9 +515,9 @@ const outstockUpload = async(params)=>{
       status,
       msg
     }
-  }else{
+  } else {
     let outstockObj = await models.outstock.create(outstockParams)
-    var {msg,status,negativeStock} = await buildOutstockItem(outstockObj,outItemList)
+    var { msg, status, negativeStock } = await buildOutstockItem(outstockObj, outItemList)
     return {
       productNotFound,
       negativeStock,
@@ -526,8 +527,8 @@ const outstockUpload = async(params)=>{
   }
 }
 
-const buildOutstockParams = async(params)=>{
-  let outstockParams={}
+const buildOutstockParams = async (params) => {
+  let outstockParams = {}
   outstockParams = JSON.parse(JSON.stringify(params))
   delete outstockParams.products
   //delete outstockParams.authToken
@@ -553,46 +554,47 @@ const buildOutstockParams = async(params)=>{
  * 
  *
  */
-const buildOutstockItem = async(outstockObj,outItemList)=>{
-  const productIds = outItemList.map(item=>{
+const buildOutstockItem = async (outstockObj, outItemList) => {
+  const productIds = outItemList.map(item => {
     return item.productName_id
   })
 
   const productList = await models.producttemp.findAll({
-    where:{
-      id:productIds
+    where: {
+      id: productIds
     },
-    attributes:['id'],
-    include:{
-      model:models.inventorymaterial,
-      attributes:['id','amount']
+    attributes: ['id'],
+    include: {
+      model: models.inventorymaterial,
+      attributes: ['id', 'amount']
     }
   })
 
-  productList.forEach((productItem,index)=>{
+  productList.forEach((productItem, index) => {
     let outitemTemp = {}
-    outItemList.forEach((outItem)=>{
-      if(outItem.productName_id === productItem.id ) outitemTemp = outItem
+    outItemList.forEach((outItem) => {
+      if (outItem.productName_id === productItem.id) outitemTemp = outItem
     })
     outstockObj.setProducttemps(productItem,
-      {through:
+      {
+        through:
         {
-          amountOut:outitemTemp.amountOut,
-          volume:outitemTemp.volume,
-          weight:outitemTemp.weight,
-          freightfee:outitemTemp.freightfee,
-          site:outitemTemp.site
+          amountOut: outitemTemp.amountOut,
+          volume: outitemTemp.volume,
+          weight: outitemTemp.weight,
+          freightfee: outitemTemp.freightfee,
+          site: outitemTemp.site
         }
       })
   })
-  const {msg,status,negativeStock} = await  imOutStockUpload(productList,outItemList,outstockObj.dataValues.id)
+  const { msg, status, negativeStock } = await imOutStockUpload(productList, outItemList, outstockObj.dataValues.id)
 
   //前面测试已通过,剩下一个物料数量扣除,存在一些问题,先不做
-  return {msg,status,negativeStock} 
+  return { msg, status, negativeStock }
 }
 
-const calcOutstockIndex = (params)=>{
-  return new Promise(async(resolve,reject)=>{
+const calcOutstockIndex = (params) => {
+  return new Promise(async (resolve, reject) => {
     // const productSkus = params.products.map(item=>{
     //   return item.sku
     // })
@@ -603,35 +605,35 @@ const calcOutstockIndex = (params)=>{
     //   attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
     // })
     var productList = []
-    var productNotFound = {list:[]}
-    for(let i = 0; i < params.products.length; i++) {
+    var productNotFound = { list: [] }
+    for (let i = 0; i < params.products.length; i++) {
       var eachProduct = await models.producttemp.findOne({
         where: {
           sku: params.products[i].sku
         },
-        attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
+        attributes: ['id', 'sku', 'dhlShippingFee', 'freightFee', 'weight', 'length', 'width', 'height'],
       })
-      if(typeof(eachProduct)!="undefined" && eachProduct !="" && eachProduct !=null){
+      if (typeof (eachProduct) != "undefined" && eachProduct != "" && eachProduct != null) {
         productList.push(eachProduct)
-      }else{
+      } else {
         productNotFound.list.push(params.products[i])
       }
     }
     //console.log(productList)
-  
-    let _total_freightfee = 0,_total_volume = 0,_total_weight=0,outItemList=[]
-    productList.forEach((productItem,index)=>{
-      let _amount = 0, temp = {},_site=''
-      params.products.forEach(paramItem=>{
-        if(paramItem.sku === productItem.sku) {
+
+    let _total_freightfee = 0, _total_volume = 0, _total_weight = 0, outItemList = []
+    productList.forEach((productItem, index) => {
+      let _amount = 0, temp = {}, _site = ''
+      params.products.forEach(paramItem => {
+        if (paramItem.sku === productItem.sku) {
           _amount = paramItem.amount
           _site = paramItem.site
         }
       })
-      let item_freightfee = Number(calcFreightFee(productItem,_amount))
-      let item_volume = Number(calcVolume(productItem,_amount))
-      let item_weight = Number(calcWeight(productItem,_amount))
-  
+      let item_freightfee = Number(calcFreightFee(productItem, _amount))
+      let item_volume = Number(calcVolume(productItem, _amount))
+      let item_weight = Number(calcWeight(productItem, _amount))
+
       temp.productName_id = productItem.id
       temp.amountOut = _amount
       temp.volume = item_volume
@@ -639,7 +641,7 @@ const calcOutstockIndex = (params)=>{
       temp.weight = item_weight
       temp.site = _site
       outItemList.push(temp)
-  
+
       _total_freightfee += item_freightfee
       _total_volume += item_volume
       _total_weight += item_weight
@@ -654,22 +656,22 @@ const calcOutstockIndex = (params)=>{
   })
 }
 
-const imOutStockUpload = async(productList,outItemList,outstockId)=>{
-  let msg = '',status = 'succeed'
+const imOutStockUpload = async (productList, outItemList, outstockId) => {
+  let msg = '', status = 'succeed'
   var negativeStock = 0
   var negative_stock = []
-  for(let productItem of productList){
+  for (let productItem of productList) {
     let _amountOut = 0
-    outItemList.forEach(outItem=>{
-      if(productItem.id === outItem.productName_id){
+    outItemList.forEach(outItem => {
+      if (productItem.id === outItem.productName_id) {
         _amountOut = outItem.amountOut
       }
     })
     let _imList = productItem.inventorymaterials
 
-    for(let _imObj of _imList){
-      let _change =  _amountOut*_imObj.productmaterial.pmAmount
-      if(_imObj.amount - _change < 0) {
+    for (let _imObj of _imList) {
+      let _change = _amountOut * _imObj.productmaterial.pmAmount
+      if (_imObj.amount - _change < 0) {
         msg = `${_imObj.uniqueId}-物料数量已小于0,请及时修改或补充`
         negativeStock++
         await models.negative_stock.create({
@@ -679,12 +681,12 @@ const imOutStockUpload = async(productList,outItemList,outstockId)=>{
           cur_amount: _imObj.amount - _change
         })
       }
-      
+
       await models.sequelize.query(`UPDATE inventorymaterial SET amount = amount-${_change} WHERE id = ${_imObj.id}`)
     }
   }
 
-  return {msg,status,negativeStock}
+  return { msg, status, negativeStock }
 }
 
 /**
@@ -693,30 +695,30 @@ const imOutStockUpload = async(productList,outItemList,outstockId)=>{
  * 3.计算关联物料数量,修改物料数量
  * 4.返回状态码
  */
-const preToOutstockById = async(id) =>{
-  let status = "failed",msg=""
+const preToOutstockById = async (id) => {
+  let status = "failed", msg = ""
   let preoutstockOrigin = await models.preoutstock.findOne({
-    where:{
-      id:id
+    where: {
+      id: id
     },
-    include:[{
-      model:models.producttemp,
-      attributes:['id','weight','length','width','height','dhlShippingFee','freightFee','site_id']
+    include: [{
+      model: models.producttemp,
+      attributes: ['id', 'weight', 'length', 'width', 'height', 'dhlShippingFee', 'freightFee', 'site_id']
     }]
   })
 
   const outstockParams = buildOutstockParamsFromPre(preoutstockOrigin)
   let outstockObj = await models.outstock.create(outstockParams)
-  let res = buildOutItem(outstockObj,preoutstockOrigin)
+  let res = buildOutItem(outstockObj, preoutstockOrigin)
 
   await preoutstockOrigin.update({
-    has_out:true
+    has_out: true
   })
 
   return res
 }
 
-const buildOutstockParamsFromPre = (preObj) =>{
+const buildOutstockParamsFromPre = (preObj) => {
   let _outParams = {}
   _outParams.code = preObj.pcode
   _outParams.c_time = Date.now()
@@ -724,118 +726,119 @@ const buildOutstockParamsFromPre = (preObj) =>{
   _outParams.userOutstock_id = preObj.user_id
   _outParams.total_freightfee = preObj.total_freightfee
   _outParams.total_volume = preObj.total_volume
-  _outParams.total_weight= preObj.total_weight
+  _outParams.total_weight = preObj.total_weight
   return _outParams
 }
 
-const buildOutItem = async(outObj,preObj) =>{
-  const productIds = preObj.producttemps.map(item=>{
+const buildOutItem = async (outObj, preObj) => {
+  const productIds = preObj.producttemps.map(item => {
     return item.id
   })
 
   const siteMap = await models.site.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
 
   //console.log(preObj.Producttemps)
   //返回一个数组,每个元素是一个对象,放着amount,weight,volume,freightFee
-  const outAttributes = preObj.producttemps.map((item)=>{
-    let _volume = calcVolume(item,item.preoutitem.amount)
-    let _weight = calcWeight(item,item.preoutitem.amount)
-    let _freightFee = calcFreightFee(item,item.preoutitem.amount)
-    let _site = getSiteName(siteMap,item.site_id)
+  const outAttributes = preObj.producttemps.map((item) => {
+    let _volume = calcVolume(item, item.preoutitem.amount)
+    let _weight = calcWeight(item, item.preoutitem.amount)
+    let _freightFee = calcFreightFee(item, item.preoutitem.amount)
+    let _site = getSiteName(siteMap, item.site_id)
     return {
-      productName_id:item.id,
-      amountOut:item.preoutitem.amount,
-      volume:_volume,
-      weight:_weight,
-      freightfee:_freightFee,
-      site:_site
+      productName_id: item.id,
+      amountOut: item.preoutitem.amount,
+      volume: _volume,
+      weight: _weight,
+      freightfee: _freightFee,
+      site: _site
     }
   })
 
   const productList = await models.producttemp.findAll({
-    where:{
-      id:productIds
+    where: {
+      id: productIds
     },
-    attributes:['id'],
-    include:{
-      model:models.inventorymaterial,
-      attributes:['id','uniqueId','amount']
+    attributes: ['id'],
+    include: {
+      model: models.inventorymaterial,
+      attributes: ['id', 'uniqueId', 'amount']
     }
   })
   //创建outitem关联,这里要加入单票的weight,volume,freightfee
-  productList.forEach((item,index)=>{
+  productList.forEach((item, index) => {
     let temp = {}
-    outAttributes.forEach(outItem=>{
-      if(item.id === outItem.productName_id) temp = outItem
+    outAttributes.forEach(outItem => {
+      if (item.id === outItem.productName_id) temp = outItem
     })
     //这里有一定几率出问题
     outObj.setProducttemps(item,
-      {through:
+      {
+        through:
         {
-          amountOut:temp.amountOut,
-          volume:temp.volume,
-          weight:temp.weight,
-          freightfee:temp.freightfee,
-          site:temp.site
+          amountOut: temp.amountOut,
+          volume: temp.volume,
+          weight: temp.weight,
+          freightfee: temp.freightfee,
+          site: temp.site
         }
       })
   })
-  let imRes = await imOutStockUpload(productList,outAttributes)
+  let imRes = await imOutStockUpload(productList, outAttributes)
   return imRes
 }
 
-const getSiteName = (siteMap,site_id)=>{
+const getSiteName = (siteMap, site_id) => {
   let siteName = ''
-  for(let site of siteMap){
-    if(site.id === site_id){
+  for (let site of siteMap) {
+    if (site.id === site_id) {
       siteName = site.name
     }
   }
   return siteName
 }
 
-const calcVolume = (productObj,amount) =>{
+const calcVolume = (productObj, amount) => {
   let _volume = 0
   let _length = Number(productObj.length)
   let _width = Number(productObj.width)
   let _height = Number(productObj.height)
-  let _amount = Number(amount) 
-  if(_length && _width && _height && _amount){
-    _volume =  (_length*_width*_height*_amount)/1000000
-    
-  }else{
+  let _amount = Number(amount)
+  if (_length && _width && _height && _amount) {
+    _volume = (_length * _width * _height * _amount) / 1000000
+
+  } else {
     _volume = 0
   }
   //console.log(_length,_width,_height,_amount,_volume)
   return _volume.toFixed(3)
 }
 
-const calcWeight = (productObj,amount) =>{
+const calcWeight = (productObj, amount) => {
   let _totalWeight = 0
   let _amount = Number(amount)
   let _weight = Number(productObj.weight)
-  if(_weight && _amount){
+  if (_weight && _amount) {
     _totalWeight = _weight * _amount
-  }else{
+  } else {
     _totalWeight = 0
   }
   return _totalWeight.toFixed(3)
 }
 
-const calcFreightFee = (productObj,amount) =>{
+const calcFreightFee = (productObj, amount) => {
   let _totalFreightFee = 0
   let _amount = Number(amount)
   let _dhlShippingFee = Number(productObj.dhlShippingFee)
   let _freightFee = Number(productObj.freightFee)
 
-  if(_freightFee){
+  if (_freightFee) {
     _totalFreightFee = _amount * _freightFee
-  }else if(_dhlShippingFee){
+  } else if (_dhlShippingFee) {
     _totalFreightFee = _amount * _dhlShippingFee
-  }else{
-    _totalFreightFee = 0 
+  } else {
+    _totalFreightFee = 0
   }
   return _totalFreightFee.toFixed(3)
 }
@@ -846,32 +849,32 @@ const calcFreightFee = (productObj,amount) =>{
  * 3.遍历产品项,使用复制预出库对象创建关联项
  * 4.返回状态值
  */
-const copyPreoutstockById = async(id)=>{
-  let status = "failed",msg=""
+const copyPreoutstockById = async (id) => {
+  let status = "failed", msg = ""
   let preoutstockOrigin = await models.preoutstock.findOne({
-    where:{
-      id:id
+    where: {
+      id: id
     },
-    include:[{
-      model:models.producttemp,
-      attributes:['id']
+    include: [{
+      model: models.producttemp,
+      attributes: ['id']
     }]
   })
   const copyParams = buildPreoutstockCopyParams(preoutstockOrigin)
   let copyPreoutstockObj = await models.preoutstock.create(copyParams)
-  buildPreoutItem(copyPreoutstockObj,preoutstockOrigin)
+  buildPreoutItem(copyPreoutstockObj, preoutstockOrigin)
 
   return {
-    status:'succeed',
-    msg:'已成功复制'
+    status: 'succeed',
+    msg: '已成功复制'
   }
 }
 
-const buildPreoutstockCopyParams=(params)=>{
+const buildPreoutstockCopyParams = (params) => {
   let _params = JSON.parse(JSON.stringify(params))
   delete _params.id
   delete _params.Producttemps
-  if(params.pcode.length < 28){
+  if (params.pcode.length < 28) {
     _params.pcode = params.pcode + '副本'
   }
   _params.ptime = Date.now()
@@ -879,26 +882,26 @@ const buildPreoutstockCopyParams=(params)=>{
   return _params
 }
 
-const buildPreoutItem = async(copyObj,origin)=>{
-  const productIds = origin.producttemps.map(item=>{
+const buildPreoutItem = async (copyObj, origin) => {
+  const productIds = origin.producttemps.map(item => {
     return item.id
   })
-  const amounts = origin.producttemps.map(item=>{
+  const amounts = origin.producttemps.map(item => {
     return item.preoutitem.amount
   })
   const productList = await models.producttemp.findAll({
-    where:{
-      id:productIds
+    where: {
+      id: productIds
     }
   })
-  productList.forEach((item,index)=>{
-    copyObj.setProducttemps(item,{through:{amount:amounts[index]}})
+  productList.forEach((item, index) => {
+    copyObj.setProducttemps(item, { through: { amount: amounts[index] } })
   })
 }
 
-const findProductById = async(id)=>{
+const findProductById = async (id) => {
   const siteMap = await models.site.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
 
   // const usersList = await models.user.findAll({
@@ -906,20 +909,20 @@ const findProductById = async(id)=>{
   // })
 
   const result = await models.producttemp.findOne({
-    where:{id:id},
-    include:[models.inventorymaterial]
+    where: { id: id },
+    include: [models.inventorymaterial]
   })
-  
+
   let data = {}
-  data.detail = productDetailHandler(result,siteMap)
+  data.detail = productDetailHandler(result, siteMap)
   return data
 }
 
-const productDetailHandler = (result,siteMap)=>{
+const productDetailHandler = (result, siteMap) => {
   let data = JSON.parse(JSON.stringify(result))
   delete data.Inventorymaterials
   data.siteMap = siteMap
-  data.materials = result.inventorymaterials.map(item=>{
+  data.materials = result.inventorymaterials.map(item => {
     let temp = {}
     temp.id = item.id
     temp.uniqueId = item.uniqueId
@@ -937,114 +940,114 @@ const productDetailHandler = (result,siteMap)=>{
  *  3.1 如果修改了非数据项,直接更新
  *  3.2 如果修改了数据项,根据产品数据重新计算,最后完成更新
  */
-const changeProduct = async(params)=>{
+const changeProduct = async (params) => {
   const productOrigin = await models.producttemp.findOne({
-    where:{id:params.id},
-    include:[models.inventorymaterial]
+    where: { id: params.id },
+    include: [models.inventorymaterial]
   })
-  
+
   //检查计算项是否发生了改变
-  const isComputedAttributesChanged = checkProductParams(params,productOrigin)
-  if(!isComputedAttributesChanged){
+  const isComputedAttributesChanged = checkProductParams(params, productOrigin)
+  if (!isComputedAttributesChanged) {
     //console.log('非计算项改变')
     //更新非数据项
     updateProduct(params)
-  }else{
+  } else {
     //更新各种计算项
     //console.log('计算项改变')
-    updateCalcProduct(params,productOrigin)
+    updateCalcProduct(params, productOrigin)
   }
   updateProductMaterial(params)
   await models.log.create({
-    user_id:params.decodedInfo.id,
-    createAt:Date.now(),
-    type:CONSTANT.LOG_TYPES.PRODUCT,
-    action:`编辑:${productOrigin.sku}`
+    user_id: params.decodedInfo.id,
+    createAt: Date.now(),
+    type: CONSTANT.LOG_TYPES.PRODUCT,
+    action: `编辑:${productOrigin.sku}`
   })
   return {
-    msg:'已成功更新数据',
-    id:params.id
+    msg: '已成功更新数据',
+    id: params.id
   }
 }
 
-const updateCalcProduct = async(params,productOrigin) =>{
-  let productObj = await buildProductObjCompute(params,productOrigin)
+const updateCalcProduct = async (params, productOrigin) => {
+  let productObj = await buildProductObjCompute(params, productOrigin)
   //console.log('obj',productObj)
-  try{
-    await models.producttemp.update(productObj,{
-      where:{
-        id:params.id
+  try {
+    await models.producttemp.update(productObj, {
+      where: {
+        id: params.id
       }
     })
   }
-  catch(err){
-    console.log('updateCalcProduct-ERROR',err)
+  catch (err) {
+    console.log('updateCalcProduct-ERROR', err)
   }
-  
+
 }
 
-const updateProduct = async(params)=>{
+const updateProduct = async (params) => {
   let productObj = buildProductObjWithoutCompute(params)
-  await models.producttemp.update(productObj,{
-    where:{
-      id:params.id
+  await models.producttemp.update(productObj, {
+    where: {
+      id: params.id
     }
   })
 }
 
 //1.查找表productmaterail中pmProduct_id等于params.id的对象并删除
 //2.根据params.id,materials.item的id和amount,创建pm表新对象
-const updateProductMaterial = async(params)=>{
+const updateProductMaterial = async (params) => {
   await models.productmaterial.destroy({
-    where:{
-      pmProduct_id:params.id
+    where: {
+      pmProduct_id: params.id
     }
   })
-  try{
-    params.materials.forEach(item=>{
+  try {
+    params.materials.forEach(item => {
       models.productmaterial.create({
-        pmProduct_id:params.id,
-        pmMaterial_id:item.id,
-        pmAmount:item.amount
+        pmProduct_id: params.id,
+        pmMaterial_id: item.id,
+        pmAmount: item.amount
       })
     })
   }
-  catch(err){
-    console.log('updateProductMaterial-ERROR:',err)
+  catch (err) {
+    console.log('updateProductMaterial-ERROR:', err)
   }
 }
 
-const createProduct = async(params)=>{
-  const IsSkuRepeat = await checkSkuRepeat(params.sku) 
+const createProduct = async (params) => {
+  const IsSkuRepeat = await checkSkuRepeat(params.sku)
   let msg = ""
   let status = ""
-  
-  if(!IsSkuRepeat){
+
+  if (!IsSkuRepeat) {
     const currencyExchangeRate = await getExchangeRateBySiteId(params.site_id)
     params.currency = currencyExchangeRate
-  
+
     const formatParams = productParamsFormat(params)
     const hasAllComputeAttributes = checkComputeAttribute(formatParams)
-  
+
     let productObj
-    if(hasAllComputeAttributes) {
+    if (hasAllComputeAttributes) {
       productObj = await createProductWithCompute(formatParams)
-    }else{
+    } else {
       productObj = await createProductWithoutCompute(formatParams)
     }
 
-    await createProductMaterial(params,productObj)
+    await createProductMaterial(params, productObj)
 
     msg = "已成功新增产品"
     status = "succeed"
-  }else{
+  } else {
     msg = "sku重复,无法创建新产品"
     status = "failed"
   }
-  
+
   return {
-    msg:msg,
-    status:status
+    msg: msg,
+    status: status
   }
 }
 
@@ -1053,66 +1056,66 @@ const createProduct = async(params)=>{
  * 2.遍历IM对象,配合productObj创建productmaterial对象
  *
  */
-const createProductMaterial = async(params,productObj) =>{
-  const imIds = params.materials.map(item=>{
+const createProductMaterial = async (params, productObj) => {
+  const imIds = params.materials.map(item => {
     return item.id
   })
-  
+
   const IMObjList = await models.inventorymaterial.findAll({
-    where:{
-      id:imIds
+    where: {
+      id: imIds
     }
   })
 
-  IMObjList.map((imItem,index)=>{
+  IMObjList.map((imItem, index) => {
     let _amount = 0
-    params.materials.forEach(item=>{
-      if(item.id === imItem.id){
+    params.materials.forEach(item => {
+      if (item.id === imItem.id) {
         _amount = item.amount
       }
     })
-    productObj.setInventorymaterials(imItem,{
-      through:{
-        pmAmount:_amount
+    productObj.setInventorymaterials(imItem, {
+      through: {
+        pmAmount: _amount
       }
     })
   })
 }
-const checkSkuRepeat = async(sku) =>{
+const checkSkuRepeat = async (sku) => {
   let skuRes = await models.producttemp.findAndCountAll({
-    where:{
-      sku:sku
+    where: {
+      sku: sku
     }
   })
   return Boolean(skuRes.count)
-} 
+}
 
 //遍历attribute-type的字典,对params做数据类型转换和默认值写入.
-const productParamsFormat = (params) =>{
+const productParamsFormat = (params) => {
   //delete params.authToken
-  for(let key in CONSTANT.PRODUCT_PARAMS_MAP){
-    let type = CONSTANT.PRODUCT_PARAMS_MAP[key].type     
-      let value = params[key] || CONSTANT.PRODUCT_PARAMS_MAP[key].default
-      type === "float" ? value = parseFloat(value) : null
-      params[key] = value
+  for (let key in CONSTANT.PRODUCT_PARAMS_MAP) {
+    let type = CONSTANT.PRODUCT_PARAMS_MAP[key].type
+    let value = params[key] || CONSTANT.PRODUCT_PARAMS_MAP[key].default
+    type === "float" ? value = parseFloat(value) : null
+    params[key] = value
   }
   params.c_time = Date.now()
   return params
 }
-const checkComputeAttribute = (params) =>{
+const checkComputeAttribute = (params) => {
   //若有一项为0则为false
   let attributesHasNoZero = true
   //仅检查涉及计算的项目,若缺项或某项为0,则拒绝计算.
-  for(let key of CONSTANT.PRODUCT_CALC_LIST){
-    if(!params[key] || params[key] === 0) attributesHasNoZero = false 
+  for (let key of CONSTANT.PRODUCT_CALC_LIST) {
+    if (!params[key] || params[key] === 0) attributesHasNoZero = false
   }
 
   //计算dhlfee是否存在
-  let {_dhlfee}  = calDHLShippingFee(params)
-  if(_dhlfee === 0){
+  let { _dhlfee } = calDHLShippingFee(params)
+  if (_dhlfee === 0) {
     attributesHasNoZero = false
   }
-  return attributesHasNoZero  
+  return attributesHasNoZero
 }
 /**
  *1.计算dhlFee,使用{...params,dhlFee:xxx}传递新数据.
@@ -1120,38 +1123,38 @@ const checkComputeAttribute = (params) =>{
  *2.计算shrinkage,margin,marginRate 
  *3.新增产品
  */
-const createProductWithCompute = async(params) =>{
-  let {_dhlfee,_dhlShippingFee} = calDHLShippingFee(params)
+const createProductWithCompute = async (params) => {
+  let { _dhlfee, _dhlShippingFee } = calDHLShippingFee(params)
   let _shrinkage = calShrinkage({
     ...params,
-    dhlfee:_dhlfee,
+    dhlfee: _dhlfee,
   })
-  let {_margin,_marginRate} = calMargin({
+  let { _margin, _marginRate } = calMargin({
     ...params,
-    dhlfee:_dhlfee,
-    shrinkage:_shrinkage
+    dhlfee: _dhlfee,
+    shrinkage: _shrinkage
   })
   let _productCostPercentage = calProductCostPercentage(params)
 
   let productObj = await models.producttemp.create({
     ...params,
-    shrinkage:_shrinkage,
-    margin:_margin,
-    marginRate:_marginRate,
-    productCostPercentage:_productCostPercentage,
-    dhlShippingFee:_dhlShippingFee
+    shrinkage: _shrinkage,
+    margin: _margin,
+    marginRate: _marginRate,
+    productCostPercentage: _productCostPercentage,
+    dhlShippingFee: _dhlShippingFee
   })
   return productObj
 }
 
-const createProductWithoutCompute = async(params) =>{
+const createProductWithoutCompute = async (params) => {
   let productObj = await models.producttemp.create({
     ...params,
-    shrinkage:0,
-    margin:0,
-    marginRate:0,
-    productCostPercentage:0,
-    dhlShippingFee:0
+    shrinkage: 0,
+    margin: 0,
+    marginRate: 0,
+    productCostPercentage: 0,
+    dhlShippingFee: 0
   })
   return productObj
 }
@@ -1159,29 +1162,29 @@ const createProductWithoutCompute = async(params) =>{
 
 
 //检查purchasePrice,freightFee,amazonSalePrice,site四项是否修改
-const checkProductParams = (params,productOrigin)=>{
-  return !(params.purchasePrice === productOrigin.purchasePrice  
-          && params.freightFee === productOrigin.freightFee 
-          && params.amazonSalePrice === productOrigin.amazonSalePrice
-          && params.site_id === productOrigin.site_id)
+const checkProductParams = (params, productOrigin) => {
+  return !(params.purchasePrice === productOrigin.purchasePrice
+    && params.freightFee === productOrigin.freightFee
+    && params.amazonSalePrice === productOrigin.amazonSalePrice
+    && params.site_id === productOrigin.site_id)
 }
 
-const buildProductObjWithoutCompute = (params) =>{
+const buildProductObjWithoutCompute = (params) => {
   return {
-    sku:params.sku,
-    childAsin:params.childAsin,
-    title:params.title,
-    image:params.image
+    sku: params.sku,
+    childAsin: params.childAsin,
+    title: params.title,
+    image: params.image
   }
 }
 
-const getExchangeRateBySiteId = async(site_id)=>{
+const getExchangeRateBySiteId = async (site_id) => {
   let siteObj = await models.site.findOne({
-    where:{
-      id:site_id
+    where: {
+      id: site_id
     },
-    include:[models.currency]
-  }) 
+    include: [models.currency]
+  })
   return siteObj.currency.exchangeRateRMB
 }
 /*
@@ -1190,161 +1193,161 @@ const getExchangeRateBySiteId = async(site_id)=>{
 * 3.打好包返回给更新函数
 */
 
-const buildProductObjCompute = async(params,productOrigin)=>{
-  const currencyExchangeRate = await getExchangeRateBySiteId(params.site_id) 
+const buildProductObjCompute = async (params, productOrigin) => {
+  const currencyExchangeRate = await getExchangeRateBySiteId(params.site_id)
 
   //计算损耗
-  let shrinkageParmas = buildShrinkageParmas(params,productOrigin,currencyExchangeRate)
+  let shrinkageParmas = buildShrinkageParmas(params, productOrigin, currencyExchangeRate)
   let _shrinkage = calShrinkage(shrinkageParmas)
 
   //计算利润和利润率
-  let marginParams = buildMarginParams(params,productOrigin,_shrinkage,currencyExchangeRate)
-  let {_margin,_marginRate} = calMargin(marginParams)
+  let marginParams = buildMarginParams(params, productOrigin, _shrinkage, currencyExchangeRate)
+  let { _margin, _marginRate } = calMargin(marginParams)
 
   // //计算成本率
   let _productCostPercentage = calProductCostPercentage({
-    purchasePrice:params.purchasePrice,
-    amazonSalePrice:productOrigin.amazonSalePrice,
-    currency:currencyExchangeRate
+    purchasePrice: params.purchasePrice,
+    amazonSalePrice: productOrigin.amazonSalePrice,
+    currency: currencyExchangeRate
   })
-  
+
   return {
-    freightFee:params.freightFee,
-    amazonSalePrice:params.amazonSalePrice,
-    purchasePrice:params.purchasePrice,
+    freightFee: params.freightFee,
+    amazonSalePrice: params.amazonSalePrice,
+    purchasePrice: params.purchasePrice,
 
-    site_id:params.site_id,
-    sku:params.sku,
-    childAsin:params.childAsin,
-    title:params.title,
-    image:params.image,
+    site_id: params.site_id,
+    sku: params.sku,
+    childAsin: params.childAsin,
+    title: params.title,
+    image: params.image,
 
-    shrinkage:_shrinkage,
-    margin:_margin,
-    marginRate:_marginRate,
-    productCostPercentage:_productCostPercentage,
-    currency:currencyExchangeRate
+    shrinkage: _shrinkage,
+    margin: _margin,
+    marginRate: _marginRate,
+    productCostPercentage: _productCostPercentage,
+    currency: currencyExchangeRate
   }
 }
 
-const calDHLShippingFee = (params)=>{
-  let dhlShippingFee = 0,dhlfee = 0
+const calDHLShippingFee = (params) => {
+  let dhlShippingFee = 0, dhlfee = 0
   let weight = parseFloat(params.weight) || 0
-  let length = parseFloat(params.length)|| 0
+  let length = parseFloat(params.length) || 0
   let width = parseFloat(params.width) || 0
   let height = parseFloat(params.height) || 0
-  let fee1 = weight*35
-  let fee2 = length*width*height*0.007
+  let fee1 = weight * 35
+  let fee2 = length * width * height * 0.007
 
   dhlShippingFee = fee1 > fee2 ? fee1 : fee2
 
-  if(!params.freightFee || params.freightFee === 0){
+  if (!params.freightFee || params.freightFee === 0) {
     dhlfee = dhlShippingFee
-  }else{
+  } else {
     dhlfee = params.freightFee
   }
 
   return {
-    _dhlShippingFee:dhlShippingFee,
-    _dhlfee:dhlfee
+    _dhlShippingFee: dhlShippingFee,
+    _dhlfee: dhlfee
   }
 }
 
 //存在freightFee就用,不存在就用dhlShippingFee
-const buildShrinkageParmas = (params,productOrigin,currencyExchangeRate) =>{
+const buildShrinkageParmas = (params, productOrigin, currencyExchangeRate) => {
   let dhlfee = 0
-  if(Number(params.freightFee)){
+  if (Number(params.freightFee)) {
     dhlfee = params.freightFee
-  }else{
+  } else {
     dhlfee = productOrigin.dhlShippingFee
   }
   return {
-    dhlfee:dhlfee,
-    purchasePrice:params.purchasePrice,
-    packageFee:productOrigin.packageFee,
-    opFee : productOrigin.opFee,
+    dhlfee: dhlfee,
+    purchasePrice: params.purchasePrice,
+    packageFee: productOrigin.packageFee,
+    opFee: productOrigin.opFee,
     currency: currencyExchangeRate,
-    fbaFullfillmentFee:productOrigin.fbaFullfillmentFee,
-    adcost:productOrigin.adcost
+    fbaFullfillmentFee: productOrigin.fbaFullfillmentFee,
+    adcost: productOrigin.adcost
   }
 }
-const calShrinkage = (params) =>{
-  purchasePrice = parseFloat(params.purchasePrice) || 0
-  dhlfee = parseFloat(params.dhlfee) || 0 
-  packageFee = parseFloat(params.packageFee) || 0
-  opFee = parseFloat(params.opFee) || 0
-  currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
-  fbaFullfillmentFee = parseFloat(params.fbaFullfillmentFee) || 0
-  adcost= parseFloat(params.adcost) || 0
-  fee1 = (purchasePrice + dhlfee + packageFee + opFee)/currency
-  fee2 = (fee1 + fbaFullfillmentFee + adcost)*0.117
-  return fee2.toFixed(3)
-}
-
-const buildMarginParams = (params,productOrigin,_shrinkage,currencyExchangeRate) =>{
-  let dhlfee = 0
-  if(Number(params.freightFee)){
-    dhlfee = params.freightFee
-  }else{
-    dhlfee = productOrigin.dhlShippingFee
-  }
-  return {
-    dhlfee:dhlfee,
-    purchasePrice:params.purchasePrice,
-    amazonSalePrice:params.amazonSalePrice,
-
-    packageFee:productOrigin.packageFee,
-    opFee : productOrigin.opFee,
-    currency: currencyExchangeRate,
-    fbaFullfillmentFee:productOrigin.fbaFullfillmentFee,
-    adcost:productOrigin.adcost,
-    amazonReferralFee:productOrigin.amazonReferralFee,
-    payoneerServiceFee :productOrigin.payoneerServiceFee,
-    
-    shrinkage :_shrinkage
-  }
-}
-const calMargin = (params) =>{
+const calShrinkage = (params) => {
   purchasePrice = parseFloat(params.purchasePrice) || 0
   dhlfee = parseFloat(params.dhlfee) || 0
   packageFee = parseFloat(params.packageFee) || 0
   opFee = parseFloat(params.opFee) || 0
   currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
   fbaFullfillmentFee = parseFloat(params.fbaFullfillmentFee) || 0
-  adcost= parseFloat(params.adcost) || 0
-  amazonReferralFee =parseFloat(params.amazonReferralFee) || 0
+  adcost = parseFloat(params.adcost) || 0
+  fee1 = (purchasePrice + dhlfee + packageFee + opFee) / currency
+  fee2 = (fee1 + fbaFullfillmentFee + adcost) * 0.117
+  return fee2.toFixed(3)
+}
+
+const buildMarginParams = (params, productOrigin, _shrinkage, currencyExchangeRate) => {
+  let dhlfee = 0
+  if (Number(params.freightFee)) {
+    dhlfee = params.freightFee
+  } else {
+    dhlfee = productOrigin.dhlShippingFee
+  }
+  return {
+    dhlfee: dhlfee,
+    purchasePrice: params.purchasePrice,
+    amazonSalePrice: params.amazonSalePrice,
+
+    packageFee: productOrigin.packageFee,
+    opFee: productOrigin.opFee,
+    currency: currencyExchangeRate,
+    fbaFullfillmentFee: productOrigin.fbaFullfillmentFee,
+    adcost: productOrigin.adcost,
+    amazonReferralFee: productOrigin.amazonReferralFee,
+    payoneerServiceFee: productOrigin.payoneerServiceFee,
+
+    shrinkage: _shrinkage
+  }
+}
+const calMargin = (params) => {
+  purchasePrice = parseFloat(params.purchasePrice) || 0
+  dhlfee = parseFloat(params.dhlfee) || 0
+  packageFee = parseFloat(params.packageFee) || 0
+  opFee = parseFloat(params.opFee) || 0
+  currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
+  fbaFullfillmentFee = parseFloat(params.fbaFullfillmentFee) || 0
+  adcost = parseFloat(params.adcost) || 0
+  amazonReferralFee = parseFloat(params.amazonReferralFee) || 0
   payoneerServiceFee = parseFloat(params.payoneerServiceFee) || 0
-  amazonSalePrice=parseFloat(params.amazonSalePrice) || 0
+  amazonSalePrice = parseFloat(params.amazonSalePrice) || 0
   shrinkage = parseFloat(params.shrinkage) || 0
 
-  let fee1,fee2,fee3,_margin,_marginRate
+  let fee1, fee2, fee3, _margin, _marginRate
 
-  fee1 = amazonSalePrice*(1-amazonReferralFee/100)
-  fee2 = fbaFullfillmentFee+shrinkage+adcost
-  fee3 = (fee1-fee2)*(1-payoneerServiceFee/100)*currency
-  _margin = (fee3-purchasePrice-dhlfee-packageFee-opFee).toFixed(2)
-  if( amazonSalePrice*currency===0){
+  fee1 = amazonSalePrice * (1 - amazonReferralFee / 100)
+  fee2 = fbaFullfillmentFee + shrinkage + adcost
+  fee3 = (fee1 - fee2) * (1 - payoneerServiceFee / 100) * currency
+  _margin = (fee3 - purchasePrice - dhlfee - packageFee - opFee).toFixed(2)
+  if (amazonSalePrice * currency === 0) {
     _marginRate = 0
-  }    
-  else{
-    _marginRate = (100*_margin/(amazonSalePrice*currency)).toFixed(2)
-  }    
+  }
+  else {
+    _marginRate = (100 * _margin / (amazonSalePrice * currency)).toFixed(2)
+  }
   return {
     _margin,
     _marginRate
   }
 }
- 
-const calProductCostPercentage = (params)=>{
+
+const calProductCostPercentage = (params) => {
   purchasePrice = parseFloat(params.purchasePrice) || 0
-  amazonSalePrice=parseFloat(params.amazonSalePrice) || 0
+  amazonSalePrice = parseFloat(params.amazonSalePrice) || 0
   currency = parseFloat(params.currency) || CONSTANT.DEFAULT_USD_CURRENCY
-  if (amazonSalePrice*currency==0){
-    fee=0
+  if (amazonSalePrice * currency == 0) {
+    fee = 0
   }
-  else{
-    fee = 100*purchasePrice/(amazonSalePrice*currency)
-  }     
+  else {
+    fee = 100 * purchasePrice / (amazonSalePrice * currency)
+  }
   return fee.toFixed(2)
 }
 
@@ -1354,19 +1357,19 @@ const calProductCostPercentage = (params)=>{
  * 然后将数据组装成map，将一个产品的物料信息存到一起，以productSku为key，所有的信息为value(包括所有的物料)
  * 然后再组装成固定的格式。例如：第一个产品有物料5个，第二产品只有2个物料，那么将第二个产品的物料名称和数量补上，但是value设置成 ""
  */
-var findAllRelationShip = async function(){
+var findAllRelationShip = async function () {
   let sql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
   FROM productmaterial pm 
   INNER JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
   INNER JOIN producttemp pro ON pm.pmProduct_id = pro.id
   ORDER BY pro.id DESC
   `
-  const [sqlResults, metadata] =await models.sequelize.query(sql)
+  const [sqlResults, metadata] = await models.sequelize.query(sql)
   let data = buildData(sqlResults)
   return data
 }
 
-var findRelationBySkuOrDesc = async function(params){
+var findRelationBySkuOrDesc = async function (params) {
   params = "%" + params + "%"
   let sql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
     FROM productmaterial pm 
@@ -1376,56 +1379,56 @@ var findRelationBySkuOrDesc = async function(params){
     ORDER BY pro.id DESC
   `
   //绑定参数，防止SQL注入
-  const [sqlResults, metadata] =await models.sequelize.query(sql,{
-    bind:[params],
-    logging:false
+  const [sqlResults, metadata] = await models.sequelize.query(sql, {
+    bind: [params],
+    logging: false
   })
   let data = buildData(sqlResults)
   return data
 }
 
-var buildData = async function(sqlResults){
+var buildData = async function (sqlResults) {
   let dataMap = transformDataToMap(sqlResults)
   let data = buildRelationData(dataMap)
   return data
 }
 
-var transformDataToMap = function(data){
+var transformDataToMap = function (data) {
   var map = {}
   let dataMap = {}
   let max = 1
-  data.map(item=>{
+  data.map(item => {
     let sku = item.sku
-    if(map[sku] == undefined){
+    if (map[sku] == undefined) {
       map[sku] = 1
       dataMap[sku] = item
-    }else{
+    } else {
       let count = map[sku] + 1
       map[sku] = count
-      let meterialName = "uniqueId"+count
+      let meterialName = "uniqueId" + count
       let pmAmountName = "pmAmount" + count
       dataMap[sku][meterialName] = item.uniqueId1
       dataMap[sku][pmAmountName] = item.pmAmount1
-      if(max < count){
+      if (max < count) {
         max = count
       }
     }
   })
   return {
-    data:dataMap,
-    maxMeterialCount:max
+    data: dataMap,
+    maxMeterialCount: max
   }
 }
 
-var buildRelationData = function(dataMap){
+var buildRelationData = function (dataMap) {
   let result = []
   let keys = Object.keys(dataMap.data)
   let data = dataMap.data
-  keys.map(item=>{
-    for(var j=2; j<= dataMap.maxMeterialCount; j++){
-      let meterialName = "uniqueId"+j
-      if(data[item][meterialName] == undefined){
-        let meterialName = "uniqueId"+j
+  keys.map(item => {
+    for (var j = 2; j <= dataMap.maxMeterialCount; j++) {
+      let meterialName = "uniqueId" + j
+      if (data[item][meterialName] == undefined) {
+        let meterialName = "uniqueId" + j
         let pmAmountName = "pmAmount" + j
         data[item][meterialName] = ""
         data[item][pmAmountName] = ""
@@ -1436,12 +1439,12 @@ var buildRelationData = function(dataMap){
   return result
 }
 
-var showNoneProductMeterial = async function(){
-  let sql =  `SELECT DISTINCT uniqueId,description FROM inventorymaterial im WHERE im.id NOT IN (
+var showNoneProductMeterial = async function () {
+  let sql = `SELECT DISTINCT uniqueId,description FROM inventorymaterial im WHERE im.id NOT IN (
     SELECT pmMaterial_id FROM productmaterial
   )
   `
-  const [sqlResults, metadata] =await models.sequelize.query(sql)
+  const [sqlResults, metadata] = await models.sequelize.query(sql)
   let data = []
   sqlResults.map(item => {
     data.push(item)
@@ -1449,7 +1452,7 @@ var showNoneProductMeterial = async function(){
   return data
 }
 
-var deleteProduct = async function(params){
+var deleteProduct = async function (params) {
   let sqlSetKeyNull = `UPDATE producttemp SET creater_id = NULL,site_id = NULL WHERE id = ${params}`
   let sqlPM = `DELETE FROM productmaterial WHERE pmProduct_id = ${params}`
   let sqlDelProduct = `DELETE FROM producttemp WHERE id =  ${params}`
@@ -1457,21 +1460,169 @@ var deleteProduct = async function(params){
   let code = 200
   const t = await models.sequelize.transaction();
   try {
-    await models.sequelize.query(sqlSetKeyNull,{transaction:t})
-    await models.sequelize.query(sqlPM,{transaction:t})
-    await models.sequelize.query(sqlDelProduct,{transaction:t})
+    await models.sequelize.query(sqlSetKeyNull, { transaction: t })
+    await models.sequelize.query(sqlPM, { transaction: t })
+    await models.sequelize.query(sqlDelProduct, { transaction: t })
     await t.commit()
     msg = "删除成功"
-  }catch (err) {
+  } catch (err) {
     code = 500
     msg = err.message
     await t.rollback()
   }
   return {
-    code:code,
-    msg:msg
+    code: code,
+    msg: msg
   }
 }
+/**
+ * 首先判断产品、物料是否在数据库存在，产品在库中存在不能新建、物料在库中不存在不能新建，在判断物料是否在库中时将uniqueId转换成id
+ * 
+ */
+
+
+var createProductList = async function (data) {
+  let res = {}
+  res.insertResult = { success: true, message: "" }
+  res.productExistInfo = await findProductExist(data)
+  materialExistInfo = await findMaterialExists(data)
+  res.materialExistInfo = {
+    allMaterialExist: materialExistInfo.allMaterialExist,
+    materialNotFindList: materialExistInfo.materialNotFindList
+  }
+  let siteExistInfo = await findSiteExists(data)
+  res.allSitesExist = siteExistInfo.allSitesFind
+  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.allSitesExist) {
+    let insertResult = await insertProduct(data, siteExistInfo.siteMap, materialExistInfo.materailMap)
+    res.proResult = insertResult
+  }
+
+  return res
+}
+
+var findProductExist = async function (params) {
+  let productList = []
+  let skuList = []
+  let allNewProductNotExist = true
+  params.map(item => {
+    productList.push(item.sku)
+  })
+  let result = await models.producttemp.findAll({
+    where: {
+      sku: {
+        [Op.in]: productList
+      }
+    }
+  })
+  if (result.length > 0) {
+    result.map(item => {
+      skuList.push(item.sku)
+    })
+  }
+  allNewProductNotExist = skuList.length === 0 ? true : false
+  return {
+    skuList: skuList,
+    allNewProductNotExist: allNewProductNotExist
+  }
+}
+
+var findMaterialExists = async function (params) {
+  let materialNotFindList = []
+  let allMaterialExist = true
+  let materialList = []
+  let materailMap = new Map()
+  params.map(product => {
+    product.materialList.map(item => {
+      materailMap.set(item.uniqueId)
+    })
+  })
+  for (let key of materailMap) {
+    materialList.push(key[0])
+  }
+  let result = await models.inventorymaterial.findAll({
+    where: {
+      uniqueId: {
+        [Op.in]: materialList
+      }
+    }
+  })
+  result.map(item => {
+    materailMap.set(item.uniqueId, item.id)
+  })
+  for (let key of materailMap) {
+    if (key[1] === undefined) {
+      materialNotFindList.push(key[0])
+    }
+  }
+
+  allMaterialExist = materialNotFindList.length > 0 ? false : true
+  return {
+    materialNotFindList: materialNotFindList,
+    allMaterialExist: allMaterialExist,
+    materailMap: materailMap
+  }
+}
+
+var findSiteExists = async function (data) {
+  let siteNameList = []
+  let siteMap = new Map()
+  let allSitesFind = true
+  data.map(item => {
+    siteNameList.push(item.site)
+  })
+  let result = await models.site.findAll({
+    where: {
+      name: {
+        [Op.in]: siteNameList
+      }
+    }
+  })
+  result.map(item => {
+    siteMap.set(item.name, item.id)
+  })
+  data.map(item => {
+    if (!siteMap.has(item.site)) {
+      allSitesFind = false
+    }
+  })
+  return { siteMap: siteMap, allSitesFind: allSitesFind }
+}
+
+var insertProduct = async function (data, siteMap, materailMap) {
+  let productInsertSql = `INSERT INTO producttemp (sku,title,description,site_id) VALUES ($1,$2,$3,$4)`
+  let findProductIdSql = `SELECT id FROM producttemp WHERE sku = $1`
+  let productMaterialInsertSql = `INSERT INTO productmaterial (pmAmount,pmProduct_id,pmMaterial_id) VALUES ($1,$2,$3)`
+  let message = ``, errorRow = ``
+  const t = await models.sequelize.transaction()
+  let success = true
+  try {
+    for await (let product of data) {
+      errorRow = product.sku
+      await models.sequelize.query(productInsertSql, {
+        bind: [product.sku, product.title, product.description, siteMap.get(product.site)],
+        transaction: t
+      })
+      let [idResult, metadata] = await models.sequelize.query(findProductIdSql, {
+        bind: [product.sku],
+        transaction: t
+      })
+      for await (let material of product.materialList) {
+        await models.sequelize.query(productMaterialInsertSql, {
+          bind: [material.materialAmount, idResult[0].id, materailMap.get(material.uniqueId)],
+          transaction: t,
+        })
+      }
+    }
+    message = "创建成功"
+    await t.commit()
+  } catch (error) {
+    await t.rollback()
+    message = "产品" + errorRow + "创建失败"
+    console.log(error)
+  }
+  return { success: success, message: message }
+}
+
 
 module.exports = {
   findProductList,
@@ -1494,5 +1645,6 @@ module.exports = {
   findAllRelationShip,
   findRelationBySkuOrDesc,
   showNoneProductMeterial,
-  deleteProduct
+  deleteProduct,
+  createProductList
 }

@@ -85,6 +85,15 @@ router.post('/add',async(ctx)=>{
   }
 })
 
+router.post('/upload',async(ctx)=>{
+  const data = await productController.createProductList(ctx.request.body)
+  ctx.body = {
+    code:200,
+    errMsg:"",
+    data:data
+  }
+})
+
 router.post('/preoutstock/list',async(ctx)=>{
   const data = await productController.findPreoutstockList(ctx.request.body)
   ctx.body = {
