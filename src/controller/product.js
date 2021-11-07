@@ -913,6 +913,7 @@ const buildPreoutItem = async (copyObj, origin) => {
 }
 
 const findProductById = async (id) => {
+  let brandSql = `SELECT name FROM brand WHERE id = $1`
   const siteMap = await models.site.findAll({
     attributes: ['id', 'name']
   })
@@ -925,9 +926,12 @@ const findProductById = async (id) => {
     where: { id: id },
     include: [models.inventorymaterial]
   })
-
+  const [brandResult, metadata] = await models.sequelize.query(brandSql, {
+    bind: [result.brand]
+  })
   let data = {}
   data.detail = productDetailHandler(result, siteMap)
+  data.detail.brandName = brandResult[0].name
   return data
 }
 
@@ -959,6 +963,15 @@ const changeProduct = async (params) => {
     include: [models.inventorymaterial]
   })
 
+  const brand = await findBrandIdByName(params.brandName)
+  if(brand.length === 0) {
+    return {
+      msg:`品牌${params.brandName}不存在`,
+      id: params.id
+    }
+  }else{
+    params.brand = brand[0].id
+  }
   //检查计算项是否发生了改变
   const isComputedAttributesChanged = checkProductParams(params, productOrigin)
   if (!isComputedAttributesChanged) {
@@ -972,7 +985,7 @@ const changeProduct = async (params) => {
   }
   updateProductMaterial(params)
   await models.log.create({
-    user_id: params.decodedInfo.id,
+    user_id: params.user_id,
     createAt: Date.now(),
     type: CONSTANT.LOG_TYPES.PRODUCT,
     action: `编辑:${productOrigin.sku}`
@@ -981,6 +994,14 @@ const changeProduct = async (params) => {
     msg: '已成功更新数据',
     id: params.id
   }
+}
+
+const findBrandIdByName = async (name) => {
+  let sql = `SELECT id FROM brand WHERE name = $1`
+  let [result, metadata] = await models.sequelize.query(sql, {
+    bind: [name]
+  })
+  return result
 }
 
 const updateCalcProduct = async (params, productOrigin) => {
@@ -1187,7 +1208,8 @@ const buildProductObjWithoutCompute = (params) => {
     sku: params.sku,
     childAsin: params.childAsin,
     title: params.title,
-    image: params.image
+    image: params.image,
+    brand:params.brand
   }
 }
 
