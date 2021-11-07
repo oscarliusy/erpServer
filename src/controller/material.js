@@ -105,10 +105,10 @@ const changeInventoryMaterial = async(params)=>{
   })
 
   await models.log.create({
-    user_id:params.decodedInfo.id,
+    user_id:params.userPurchase_id,
     createAt:Date.now(),
     type:CONSTANT.LOG_TYPES.MATERIAL,
-    action:`编辑:${IMObj.uniqueId}`
+    action:params.modifyReason
   })
   return {
     msg:'已成功更新数据',
