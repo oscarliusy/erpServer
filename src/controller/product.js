@@ -8,7 +8,7 @@ const findProductList = async (params) => {
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
   //多字段模糊查询
-  let where = {is_deleted: 0}
+  let where = { is_deleted: 0 }
   if (keyword) {
     where = {
       [Op.or]: [
@@ -282,9 +282,9 @@ const productSearchForPreoutstock = async (params) => {
     offset: offset,
     limit: limited,
     attributes: ['id', 'sku', 'childAsin', 'title'],
-    is_deleted:0,
+    is_deleted: 0,
     include: [models.site]
-  },{logging:true})
+  }, { logging: true })
 
   let data = product4preoutstockDataHandler(result)
 
@@ -1520,8 +1520,19 @@ var showNoneProductMeterial = async function () {
 var deleteProduct = async function (params) {
   let sqlPM = `DELETE FROM productmaterial WHERE pmProduct_id = ${params}`
   let sqlDelProduct = `UPDATE producttemp SET is_deleted = 1 WHERE id =  ${params}`
+
   let msg = ""
   let success = true
+  let preOutData = await checkIsPreOut(params)
+  console.log(preOutData)
+  if (preOutData.length > 0) {
+    success = false
+    msg = `以下预出库数据(id)包含该产品尚未出库:`+preOutData.toString()
+    return {
+      success: success,
+      msg: msg
+    }
+  }
   const t = await models.sequelize.transaction();
   try {
     await models.sequelize.query(sqlPM, { transaction: t })
@@ -1538,6 +1549,23 @@ var deleteProduct = async function (params) {
     success: success,
     msg: msg
   }
+}
+
+var checkIsPreOut = async function (params) {
+  let sqlPreOutItem = `SELECT id FROM preoutstock 
+      WHERE has_out = 0 
+      AND id IN (
+        SELECT DISTINCT master_id FROM preoutitem
+          WHERE productName_id = ${params}
+        )
+    `
+  let [result, metadata] = await models.sequelize.query(sqlPreOutItem, {
+    bind: [params]
+  })
+  let list = result.map(item => {
+    return item.id
+  })
+  return list
 }
 /**
  * 首先判断产品、物料是否在数据库存在，产品在库中存在不能新建、物料在库中不存在不能新建，在判断物料是否在库中时将uniqueId转换成id
