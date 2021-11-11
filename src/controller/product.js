@@ -1492,7 +1492,7 @@ var deleteProduct = async function (params) {
   let sqlPM = `DELETE FROM productmaterial WHERE pmProduct_id = ${params}`
   let sqlDelProduct = `DELETE FROM producttemp WHERE id =  ${params}`
   let msg = ""
-  let code = 200
+  let success = true
   const t = await models.sequelize.transaction();
   try {
     await models.sequelize.query(sqlSetKeyNull, { transaction: t })
@@ -1501,12 +1501,12 @@ var deleteProduct = async function (params) {
     await t.commit()
     msg = "删除成功"
   } catch (err) {
-    code = 500
-    msg = err.message
+    success = false
+    msg = `删除失败`
     await t.rollback()
   }
   return {
-    code: code,
+    success: success,
     msg: msg
   }
 }

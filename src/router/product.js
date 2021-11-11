@@ -52,7 +52,7 @@ router.post('/pmrelation/list',async(ctx)=>{
 router.post('/delete',async(ctx)=>{
   let data = await productController.deleteProduct(ctx.request.body.id)
   ctx.body = {
-    code: data.code,
+    code: 200,
     errMsg:"",
     data: data
   }
