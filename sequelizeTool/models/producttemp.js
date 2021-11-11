@@ -30,7 +30,8 @@ module.exports = (sequelize, DataTypes) => {
     adcost:DataTypes.DECIMAL,
     freightFee: DataTypes.DECIMAL,
     tagpath: DataTypes.STRING(150),
-    brand: DataTypes.INTEGER(11)
+    brand: DataTypes.INTEGER(11),
+    is_deleted: DataTypes.INTEGER(1)
   }, {});
   producttemp.associate = function(models) {
     //物料与产品多对多

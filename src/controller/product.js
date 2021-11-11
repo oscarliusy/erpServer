@@ -7,9 +7,8 @@ const findProductList = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
-
   //多字段模糊查询
-  let where = {}
+  let where = {is_deleted: 0}
   if (keyword) {
     where = {
       [Op.or]: [
@@ -27,8 +26,7 @@ const findProductList = async (params) => {
     offset: offset,
     limit: limited,
     include: [models.user, models.site, models.inventorymaterial]
-  })
-
+  });
   let data = await productDataHandler(result)
   data = await changeBrandIdToName(data)
   return data
@@ -284,8 +282,9 @@ const productSearchForPreoutstock = async (params) => {
     offset: offset,
     limit: limited,
     attributes: ['id', 'sku', 'childAsin', 'title'],
+    is_deleted:0,
     include: [models.site]
-  })
+  },{logging:true})
 
   let data = product4preoutstockDataHandler(result)
 
@@ -964,12 +963,12 @@ const changeProduct = async (params) => {
   })
 
   const brand = await findBrandIdByName(params.brandName)
-  if(brand.length === 0) {
+  if (brand.length === 0) {
     return {
-      msg:`品牌${params.brandName}不存在`,
+      msg: `品牌${params.brandName}不存在`,
       id: params.id
     }
-  }else{
+  } else {
     params.brand = brand[0].id
   }
   //检查计算项是否发生了改变
@@ -1052,9 +1051,19 @@ const updateProductMaterial = async (params) => {
 }
 
 const createProduct = async (params) => {
-  const IsSkuRepeat = await checkSkuRepeat(params.sku)
   let msg = ""
-  let status = ""
+  let success = true
+  let [isBrandExist, brandId] = await checkBrandExist(params)
+  console.log(isBrandExist)
+  if (!isBrandExist) {
+    msg = "品牌不存在"
+    success = false
+    return {
+      msg: msg,
+      success: success
+    }
+  }
+  const IsSkuRepeat = await checkSkuRepeat(params.sku)
 
   if (!IsSkuRepeat) {
     const currencyExchangeRate = await getExchangeRateBySiteId(params.site_id)
@@ -1073,15 +1082,15 @@ const createProduct = async (params) => {
     await createProductMaterial(params, productObj)
 
     msg = "已成功新增产品"
-    status = "succeed"
+    success = true
   } else {
     msg = "sku重复,无法创建新产品"
-    status = "failed"
+    success = false
   }
 
   return {
     msg: msg,
-    status: status
+    success: success
   }
 }
 
@@ -1122,6 +1131,26 @@ const checkSkuRepeat = async (sku) => {
     }
   })
   return Boolean(skuRes.count)
+}
+
+const checkBrandExist = async (params) => {
+  let brandExist = true
+  let brandId = -1
+  let brandQuerySql = `SELECT id FROM brand WHERE name = $1`
+  let [result, metadata] = await models.sequelize.query(
+    brandQuerySql,
+    {
+      bind: [params.brandName]
+    }
+  )
+  if (result.length === 0) {
+    brandExist = false
+    brand = -1
+  } else {
+    brandExist = true
+    brandId = result[0].id
+  }
+  return [brandExist, brandId]
 }
 
 //遍历attribute-type的字典,对params做数据类型转换和默认值写入.
@@ -1209,7 +1238,7 @@ const buildProductObjWithoutCompute = (params) => {
     childAsin: params.childAsin,
     title: params.title,
     image: params.image,
-    brand:params.brand
+    brand: params.brand
   }
 }
 
@@ -1397,6 +1426,7 @@ var findAllRelationShip = async function () {
   FROM productmaterial pm 
   INNER JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
   INNER JOIN producttemp pro ON pm.pmProduct_id = pro.id
+  WHERE pro.is_deleted = 0
   ORDER BY pro.id DESC
   `
   const [sqlResults, metadata] = await models.sequelize.query(sql)
@@ -1488,14 +1518,12 @@ var showNoneProductMeterial = async function () {
 }
 
 var deleteProduct = async function (params) {
-  let sqlSetKeyNull = `UPDATE producttemp SET creater_id = NULL,site_id = NULL WHERE id = ${params}`
   let sqlPM = `DELETE FROM productmaterial WHERE pmProduct_id = ${params}`
-  let sqlDelProduct = `DELETE FROM producttemp WHERE id =  ${params}`
+  let sqlDelProduct = `UPDATE producttemp SET is_deleted = 1 WHERE id =  ${params}`
   let msg = ""
   let success = true
   const t = await models.sequelize.transaction();
   try {
-    await models.sequelize.query(sqlSetKeyNull, { transaction: t })
     await models.sequelize.query(sqlPM, { transaction: t })
     await models.sequelize.query(sqlDelProduct, { transaction: t })
     await t.commit()
@@ -1503,6 +1531,7 @@ var deleteProduct = async function (params) {
   } catch (err) {
     success = false
     msg = `删除失败`
+    console.log(err)
     await t.rollback()
   }
   return {
