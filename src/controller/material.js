@@ -226,7 +226,7 @@ const createInstock = async (params) => {
       } else {
         //判断是不是浮点数
         if ((material.instockAmount % 1) != 0) {
-          msg = `${material.uniqueId}数量不是整数`
+          msg = `${material.uniqueId}的入库数量不是整数`
           success = false
           throw new Error(msg)
         }

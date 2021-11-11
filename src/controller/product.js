@@ -1524,7 +1524,6 @@ var deleteProduct = async function (params) {
   let msg = ""
   let success = true
   let preOutData = await checkIsPreOut(params)
-  console.log(preOutData)
   if (preOutData.length > 0) {
     success = false
     msg = `以下预出库数据(id)包含该产品尚未出库:`+preOutData.toString()
