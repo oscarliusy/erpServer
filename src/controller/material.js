@@ -2,37 +2,37 @@ const models = require('../../sequelizeTool/models')
 const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
 
-const findInventoryMaterialList = async(params) =>{
+const findInventoryMaterialList = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
-  const sort = parseInt(params.sort) === 1?'DESC':'ASC'
+  const sort = parseInt(params.sort) === 1 ? 'DESC' : 'ASC'
 
   //多字段模糊查询
   let where = {}
-  if(keyword){
+  if (keyword) {
     where = {
-      [Op.or]:[
-        {description:{[Op.like]:'%' + keyword + '%'}},
-        {uniqueId:{[Op.like]:'%' + keyword + '%'}}
+      [Op.or]: [
+        { description: { [Op.like]: '%' + keyword + '%' } },
+        { uniqueId: { [Op.like]: '%' + keyword + '%' } }
       ]
     }
   }
 
   const result = await models.inventorymaterial.findAndCountAll({
-    order:[['amount',sort]] ,//ASC:正序  DESC:倒序
-    where:where,
-    offset:offset,
-    limit:limited,
-    include:[models.user]
+    order: [['amount', sort]],//ASC:正序  DESC:倒序
+    where: where,
+    offset: offset,
+    limit: limited,
+    include: [models.user]
   })
 
   let data = IMDataHandler(result)
   return data
 }
 
-const getIMtotalNumber = async()=>{
-  let totalNum = 0,totalCost = 0
+const getIMtotalNumber = async () => {
+  let totalNum = 0, totalCost = 0
   await models.sequelize.query('SELECT sum(amount) FROM erpdb.inventorymaterial').spread(function (results, metadata) {
     // results:[ TextRow { 'sum(amount)': '5129' } ]
     totalNum = results[0]['sum(amount)']
@@ -47,27 +47,27 @@ const getIMtotalNumber = async()=>{
   }
 }
 
-const findIMListForInstork= async(params) =>{
+const findIMListForInstork = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
 
   //多字段模糊查询
   let where = {}
-  if(keyword){
+  if (keyword) {
     where = {
-      [Op.or]:[
-        {description:{[Op.like]:'%' + keyword + '%'}},
-        {uniqueId:{[Op.like]:'%' + keyword + '%'}}
+      [Op.or]: [
+        { description: { [Op.like]: '%' + keyword + '%' } },
+        { uniqueId: { [Op.like]: '%' + keyword + '%' } }
       ]
     }
   }
 
   const result = await models.inventorymaterial.findAndCountAll({
-    where:where,
-    offset:offset,
-    limit:limited,
-    attributes:['id','uniqueId','description','amount']
+    where: where,
+    offset: offset,
+    limit: limited,
+    attributes: ['id', 'uniqueId', 'description', 'amount']
   })
 
   let data = IMDataSearchHandler(result)
@@ -75,120 +75,120 @@ const findIMListForInstork= async(params) =>{
   return data
 }
 
-const findInventoryMaterialById = async(id)=>{
+const findInventoryMaterialById = async (id) => {
   const usersList = await models.user.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
   const result = await models.inventorymaterial.findOne({
-    where:{id:id}
+    where: { id: id }
   })
   let data = JSON.parse(JSON.stringify(result))
   data.usersList = usersList
   return data
 }
 
-const findIMByUniqueid = async(uniqueid)=>{
+const findIMByUniqueid = async (uniqueid) => {
   const result = await models.inventorymaterial.findOne({
-    where:{uniqueId:uniqueid}
+    where: { uniqueId: uniqueid }
   })
   let data = JSON.parse(JSON.stringify(result))
   return data
 }
 
 
-const changeInventoryMaterial = async(params)=>{
+const changeInventoryMaterial = async (params) => {
   let IMObj = buildImObj(params)
-  await models.inventorymaterial.update(IMObj,{
-    where:{
-      id:params.id
+  await models.inventorymaterial.update(IMObj, {
+    where: {
+      id: params.id
     }
   })
 
   await models.log.create({
-    user_id:params.userPurchase_id,
-    createAt:Date.now(),
-    type:CONSTANT.LOG_TYPES.MATERIAL,
-    action:params.modifyReason
+    user_id: params.userPurchase_id,
+    createAt: Date.now(),
+    type: CONSTANT.LOG_TYPES.MATERIAL,
+    action: params.modifyReason
   })
   return {
-    msg:'已成功更新数据',
-    id:params.id
+    msg: '已成功更新数据',
+    id: params.id
   }
 }
 
-const deleteMaterial = async function(params) {
+const deleteMaterial = async function (params) {
   let getProductSql = `SELECT DISTINCT pro.id,pro.sku FROM productmaterial pm
 	inner JOIN producttemp pro ON pm.pmProduct_id = pro.id
 WHERE pm.pmMaterial_id = ${params.id}`
 
   let message = ""
   let [productResult, metadata] = await models.sequelize.query(getProductSql)
-  
-  if(productResult.length != 0) {
+
+  if (productResult.length != 0) {
     let idList = []
-    productResult.map(item =>{
+    productResult.map(item => {
       idList.push(item.sku)
     })
     message = "有如下产品与该物料(SKU)关联：" + idList.toString()
-    
-  }else{
+
+  } else {
     let deleteSql = `delete from inventorymaterial where id = $1`
-    await models.sequelize.query(deleteSql,{
-      bind:[params.id]
+    await models.sequelize.query(deleteSql, {
+      bind: [params.id]
     })
     message = "success"
   }
   return message
 }
 
- /**
-  * 1.build数据
-  * 2.查找uniqueId重名
-  * 3.有重名返回失败
-  * 4.无重名则创建,并返回成功
-  */
-const addInventoryMaterial = async(params)=>{
+/**
+ * 1.build数据
+ * 2.查找uniqueId重名
+ * 3.有重名返回失败
+ * 4.无重名则创建,并返回成功
+ */
+const addInventoryMaterial = async (params) => {
   let IMObj = buildImObj(params)
   let checkRes = await models.inventorymaterial.count({
-    where:{
-      uniqueId:IMObj.uniqueId
+    where: {
+      uniqueId: IMObj.uniqueId
     }
   })
 
-  if(checkRes){
+  if (checkRes) {
     return {
-      type:'error',
-      msg:'uniqueId已存在,请重新命名',
+      type: 'error',
+      msg: 'uniqueId已存在,请重新命名',
     }
-  }else{
+  } else {
     let addRes = await models.inventorymaterial.create(IMObj)
     return {
-      type:'success',
-      msg:'已成功新增',
-      id:addRes.id
+      type: 'success',
+      msg: '已成功新增',
+      id: addRes.id
     }
   }
 }
 
-const uploadNewMaterial = async(params)=>{
+const uploadNewMaterial = async (params) => {
   const t = await models.sequelize.transaction();
-  params.data.map(item=>{
+  params.data.map(item => {
     item["userPurchase_id"] = params.user
   })
   let code
-  try{
+  try {
     await models.inventorymaterial.bulkCreate(params.data)
     message = "导入成功"
     code = 200
     await t.commit()
-  }catch(err){
+  } catch (err) {
     message = "导入失败"
     await t.rollback()
     code = 500
   }
   return {
-    msg:message,
-    code:code
+    msg: message,
+    code: code
   }
 }
 
@@ -198,52 +198,58 @@ const uploadNewMaterial = async(params)=>{
  *1.检查是否存在重名,创建instock对象
  *2.创建initem对象
  */
-const instock = async(params)=>{
-  await createInstock(params) 
+const instock = async (params) => {
+  msg = await createInstock(params)
 
   //let res = await findInstockDetail()
   return {
-    msg:'已创建成功'
+    msg: msg
   }
 }
 
-const createInstock = async(params) =>{
-  //找出物料对象
-  //如果数据库中的物料前后是有空格，无法入库-----待修复bug
-  const IMuniqueIds = params.data.dataSource.map(item=>{
-    return item.uniqueId
-  })
-
-  const IMObjList = await models.inventorymaterial.findAll({
-    where:{
-      uniqueId:IMuniqueIds
+const createInstock = async (params) => {
+  let updatSql = `UPDATE inventorymaterial SET amount = $1 WHERE id = $2`
+  let getMaterialId = `SELECT id,amount FROM inventorymaterial WHERE uniqueId = $1`
+  let msg = '已创建成功'
+  let success = true
+  const t = await models.sequelize.transaction()
+  try {
+    for await (let material of params.data.dataSource) {
+      let [result, metadata] = await models.sequelize.query(getMaterialId, {
+        bind: [material.uniqueId],
+        transaction: t
+      })
+      if (result.length === 0) {
+        msg = `${material.uniqueId}不存在`
+        success = false
+        throw new Error(msg)
+      } else {
+        //判断是不是浮点数
+        if ((material.instockAmount % 1) != 0) {
+          msg = `${material.uniqueId}数量不是整数`
+          success = false
+          throw new Error(msg)
+        }
+        let updateAmount = result[0].amount + material.instockAmount
+        let materialId = result[0].id
+        await models.sequelize.query(updatSql, {
+          bind: [updateAmount, materialId]
+        })
+        //创建入库对象
+        const instockObj = await models.instock.create({
+          code: params.code,
+          description: params.description,
+          c_time: params.createAt,
+          userInstock_id: params.userId
+        }, { transaction: t })
+      }
     }
-  })
-
-  //物料对象入库增加数量
-  IMObjList.map((item,index)=>{
-    let amountAdd = findAmountByUid(item.uniqueId,params.data.dataSource)
-    let amountNew = item.amount + amountAdd
-    item.update({
-      amount:amountNew
-    })
-    //console.log(item.uniqueId+'变为'+amountNew)
-  })
-
-  //创建入库对象
-  const instockObj = await models.instock.create({
-    code:params.code,
-    description: params.description,
-    c_time:params.createAt,
-    userInstock_id:params.userId
-  })
-
-  //创建关联initem对象
-  IMObjList.map((item,index)=>{
-    let amountAdd = findAmountByUid(item.uniqueId,params.data.dataSource)
-    //instockObj.setInventorymaterials(item,{through:{amountIn:params.data.dataSource[index].instockAmount}}) 失效，不明确原因
-    models.sequelize.query(`INSERT INTO initem (amountIn,master_id,materialName_id) VALUES (${amountAdd},${instockObj.id},${item.id})`)
-  })
+    await t.commit()
+  } catch (e) {
+    console.log(e)
+    await t.rollback()
+  }
+  return { data: msg, success: success }
 }
 
 /**
@@ -251,11 +257,11 @@ const createInstock = async(params) =>{
  * @param {String} uid 物料的uniqueId 
  * @param {Array} skus 入库的参数列表 
  */
-const findAmountByUid = (uid,skus) =>{
+const findAmountByUid = (uid, skus) => {
   let amount = 0
-  for(let i=0;i<skus.length;i++){
+  for (let i = 0; i < skus.length; i++) {
     let _uid = skus[i].uniqueId.toString().trim()
-    if(_uid === uid){
+    if (_uid === uid) {
       amount = skus[i].instockAmount
       break
     }
@@ -269,20 +275,20 @@ const findAmountByUid = (uid,skus) =>{
  * 2.根据initem中的id获取符合条件的IM
  * 3.将二者拼接成符合需求的data
  */
-const findInstockDetail = async(params)=>{
+const findInstockDetail = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const result = await models.initem.findAndCountAll({
-    where:{
-      master_id:params.id
+    where: {
+      master_id: params.id
     },
-    order:[['id','ASC']] ,//ASC:正序  DESC:倒序
-    offset:offset,
-    limit:limited,
-    attributes:['amountIn'],
-    include:[{
-      model:models.inventorymaterial,
-      attributes:['uniqueId','amount']
+    order: [['id', 'ASC']],//ASC:正序  DESC:倒序
+    offset: offset,
+    limit: limited,
+    attributes: ['amountIn'],
+    include: [{
+      model: models.inventorymaterial,
+      attributes: ['uniqueId', 'amount']
     }],
   })
 
@@ -290,10 +296,10 @@ const findInstockDetail = async(params)=>{
   return data
 }
 
-const instockDetailDataHandler = async(result)=>{
+const instockDetailDataHandler = async (result) => {
   let data = {}
   data.total = result.count
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
     temp.uniqueId = item.inventorymaterial.uniqueId
     temp.amount = item.inventorymaterial.amount
@@ -303,47 +309,47 @@ const instockDetailDataHandler = async(result)=>{
   return data
 }
 
-const findInstockList = async(params)=>{
+const findInstockList = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''
 
   const result = await models.instock.findAndCountAll({
-    order:[['id','DESC']] ,//ASC:正序  DESC:倒序
-    offset:offset,
-    limit:limited,
-    include:[models.user]
+    order: [['id', 'DESC']],//ASC:正序  DESC:倒序
+    offset: offset,
+    limit: limited,
+    include: [models.user]
   })
   let data = InstockDataHandler(result)
   return data
 }
 
-const findEditLog = async(params) =>{
+const findEditLog = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const result = await models.log.findAndCountAll({
-    order:[['id','DESC']] ,
-    offset:offset,
-    limit:limited,
-    include:[models.user],
-    where:{
-      type:CONSTANT.LOG_TYPES.MATERIAL
+    order: [['id', 'DESC']],
+    offset: offset,
+    limit: limited,
+    include: [models.user],
+    where: {
+      type: CONSTANT.LOG_TYPES.MATERIAL
     }
   })
   let data = editLogDataHandler(result)
   return data
 }
 
-const editLogDataHandler = (result) =>{
+const editLogDataHandler = (result) => {
   let data = {}
   data.total = result.count
   let editKey = CONSTANT.MATERIAL_EDITLOG_KEYS
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    editKey.forEach(key=>{
-      if(key === 'user'){
+    editKey.forEach(key => {
+      if (key === 'user') {
         temp.user = item.user.name
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -352,23 +358,23 @@ const editLogDataHandler = (result) =>{
   return data
 }
 
-const findPurchasers = async()=>{
+const findPurchasers = async () => {
   const usersList = await models.user.findAll({
-    attributes:['id','name']
+    attributes: ['id', 'name']
   })
   return usersList
 }
 
-const InstockDataHandler = (result)=>{
+const InstockDataHandler = (result) => {
   let data = {}
   let instockKeys = CONSTANT.INSTOCKKEYS
   data.total = result.count
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    instockKeys.forEach(key=>{
-      if(key === 'userInstock_id'){
+    instockKeys.forEach(key => {
+      if (key === 'userInstock_id') {
         temp.user = item.user.name
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -381,12 +387,12 @@ const IMDataHandler = (result) => {
   let data = {}
   let inventoryMaterialKeys = CONSTANT.IMKEYS
   data.totalInventory = result.count
-  data.list = result.rows.map(item=>{
+  data.list = result.rows.map(item => {
     let temp = {}
-    inventoryMaterialKeys.forEach(key=>{
-      if(key === 'userPurchase_id'){
+    inventoryMaterialKeys.forEach(key => {
+      if (key === 'userPurchase_id') {
         temp.purchaser = item.user.name
-      }else{
+      } else {
         temp[key] = item[key]
       }
     })
@@ -402,16 +408,16 @@ const IMDataSearchHandler = (result) => {
   return data
 }
 
-const buildImObj = (params)=>{
+const buildImObj = (params) => {
   var uniqueId = params.uniqueId
   uniqueId = uniqueId.trim()
   return {
-      amount: parseInt(params.amount),
-      description: params.description,
-      uniqueId: uniqueId,
-      image: params.image,
-      userPurchase_id: parseInt(params.userPurchase_id),
-      price: parseFloat(params.price),
+    amount: parseInt(params.amount),
+    description: params.description,
+    uniqueId: uniqueId,
+    image: params.image,
+    userPurchase_id: parseInt(params.userPurchase_id),
+    price: parseFloat(params.price),
   }
 }
 
