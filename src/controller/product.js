@@ -1464,6 +1464,7 @@ var getProductIdListWithSearcher = async function (params) {
       ],
       is_deleted: [0],
     },
+    order:[['id', 'DESC']],
     limit: params.limited,
     offset: params.offset
   })
