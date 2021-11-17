@@ -1054,7 +1054,6 @@ const createProduct = async (params) => {
   let msg = ""
   let success = true
   let [isBrandExist, brandId] = await checkBrandExist(params)
-  console.log(isBrandExist)
   if (!isBrandExist) {
     msg = "品牌不存在"
     success = false
@@ -1422,23 +1421,69 @@ const calProductCostPercentage = (params) => {
  * 然后再组装成固定的格式。例如：第一个产品有物料5个，第二产品只有2个物料，那么将第二个产品的物料名称和数量补上，但是value设置成 ""
  */
 var findAllRelationShip = async function (params) {
-  console.log(params.pageNum);
+  let result = { data: [], total: 0 }
+  let productIdList = await getProductIdList(params)
+  if (productIdList.length === 0) {
+    return result
+  }
+  let querySql = await buildQuerySql(productIdList)
+  const [queryRes, queryMetadata] = await models.sequelize.query(querySql)
+  let totalRes = await getProductTotal(params)
+  let data = await buildData(queryRes)
+  result.data = data, result.total = totalRes
+  return result
+}
+
+var getProductIdList = async function (params) {
   let productIdList = []
-  let limit = (params.pageNum - 1) * params.pageSize
+  if (params.item != undefined) {
+    productIdList = await getProductIdListWithSearcher(params)
+  } else {
+    productIdList = await getProductIdListWithNoSearcher(params)
+  }
+
+  return productIdList
+}
+
+var getProductIdListWithSearcher = async function (params) {
+  let item = "%" + params.item + "%"
+  let productIdList = []
+  let result = await models.producttemp.findAll({
+    where: {
+      [Op.or]: [
+        {
+          sku: {
+            [Op.like]: item
+          }
+        },
+        {
+          description: {
+            [Op.like]: item
+          }
+        }
+      ],
+      is_deleted: [0],
+    },
+    limit: params.limited,
+    offset: params.offset
+  })
+  result.map(item => {
+    productIdList.push(item.id)
+  })
+  return productIdList
+}
+
+var getProductIdListWithNoSearcher = async function (params) {
+  let row_count = (params.pageNum - 1) * params.pageSize
+  let productIdList = []
   let getProductSql = `SELECT id FROM producttemp WHERE is_deleted = 0 ORDER BY id DESC LIMIT $1,$2`
-  let queryCountSql = `SELECT count(*) total FROM producttemp`
   const [productResults, metadata] = await models.sequelize.query(getProductSql, {
-    bind: [limit, params.pageSize]
+    bind: [params.offset, params.limited]
   })
   for await (let product of productResults) {
     productIdList.push(product.id)
   }
-  let querySql = await buildQuerySql(productIdList)
-  const [queryRes, queryMetadata] = await models.sequelize.query(querySql)
-  const [totalRes, totalMetadata] = await models.sequelize.query(queryCountSql)
-  let data = await buildData(queryRes)
-  let result = { data: data, total: totalRes[0].total }
-  return result
+  return productIdList
 }
 
 var buildQuerySql = async function (productIdList) {
@@ -1449,27 +1494,43 @@ var buildQuerySql = async function (productIdList) {
   WHERE pro.id IN (?) 
   ORDER BY pro.id DESC
   `
-  querySql = querySql.replace(`?`,productIdList.toString())
+  querySql = querySql.replace(`?`, productIdList.toString())
   return querySql
 }
 
-var findRelationBySkuOrDesc = async function (params) {
-  params = "%" + params + "%"
-  let sql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
-    FROM productmaterial pm 
-    INNER JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
-    INNER JOIN producttemp pro ON pm.pmProduct_id = pro.id
-    WHERE pro.sku LIKE $1 OR pro.description LIKE $1
-    ORDER BY pro.id DESC
-  `
-  //绑定参数，防止SQL注入
-  const [sqlResults, metadata] = await models.sequelize.query(sql, {
-    bind: [params],
-    logging: false
-  })
-  let data = buildData(sqlResults)
-  return data
+var getProductTotal = async function (params) {
+  let item = ``
+  let queryCountSql = ``
+  let total = 0
+  if (params.item != undefined) {
+    item = "%" + params.item + "%"
+    let result = await models.producttemp.count({
+      where: {
+        [Op.or]: [
+          {
+            sku: {
+              [Op.like]: item
+            }
+          },
+          {
+            description: {
+              [Op.like]: item
+            }
+          }
+        ],
+        is_deleted: [0],
+      },
+    })
+    total = result
+  } else {
+    queryCountSql = `SELECT count(*) total FROM producttemp WHERE is_deleted = 0`
+    let [result, metadata] = await models.sequelize.query(queryCountSql)
+    total = result[0].total
+  }
+  return total
 }
+
+
 
 var buildData = async function (sqlResults) {
   let dataMap = transformDataToMap(sqlResults)
@@ -1754,7 +1815,6 @@ module.exports = {
   findOutstockDetailById,
   findEditLog,
   findAllRelationShip,
-  findRelationBySkuOrDesc,
   showNoneProductMeterial,
   deleteProduct,
   createProductList

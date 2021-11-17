@@ -59,7 +59,7 @@ router.post('/delete',async(ctx)=>{
 })
 
 router.post('/pmrelation/search',async(ctx)=>{
-  const data = await productController.findRelationBySkuOrDesc(ctx.request.body.item)
+  const data = await productController.findAllRelationShip(ctx.request.body)
   ctx.body = {
     code:200,
     errMsg:"",
