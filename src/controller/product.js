@@ -1421,17 +1421,36 @@ const calProductCostPercentage = (params) => {
  * 然后将数据组装成map，将一个产品的物料信息存到一起，以productSku为key，所有的信息为value(包括所有的物料)
  * 然后再组装成固定的格式。例如：第一个产品有物料5个，第二产品只有2个物料，那么将第二个产品的物料名称和数量补上，但是value设置成 ""
  */
-var findAllRelationShip = async function () {
-  let sql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
-  FROM productmaterial pm 
-  INNER JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
-  INNER JOIN producttemp pro ON pm.pmProduct_id = pro.id
-  WHERE pro.is_deleted = 0
+var findAllRelationShip = async function (params) {
+  console.log(params.pageNum);
+  let productIdList = []
+  let limit = (params.pageNum - 1) * params.pageSize
+  let getProductSql = `SELECT id FROM producttemp WHERE is_deleted = 0 ORDER BY id DESC LIMIT $1,$2`
+  let queryCountSql = `SELECT count(*) total FROM producttemp`
+  const [productResults, metadata] = await models.sequelize.query(getProductSql, {
+    bind: [limit, params.pageSize]
+  })
+  for await (let product of productResults) {
+    productIdList.push(product.id)
+  }
+  let querySql = await buildQuerySql(productIdList)
+  const [queryRes, queryMetadata] = await models.sequelize.query(querySql)
+  const [totalRes, totalMetadata] = await models.sequelize.query(queryCountSql)
+  let data = await buildData(queryRes)
+  let result = { data: data, total: totalRes[0].total }
+  return result
+}
+
+var buildQuerySql = async function (productIdList) {
+  let querySql = `SELECT pro.id, pro.sku, pro.description, im.uniqueId AS 'uniqueId1',pm.pmAmount AS 'pmAmount1'
+  FROM producttemp pro
+	LEFT JOIN productmaterial pm ON pm.pmProduct_id = pro.id
+  LEFT JOIN inventorymaterial im ON pm.pmMaterial_id = im.id
+  WHERE pro.id IN (?) 
   ORDER BY pro.id DESC
   `
-  const [sqlResults, metadata] = await models.sequelize.query(sql)
-  let data = buildData(sqlResults)
-  return data
+  querySql = querySql.replace(`?`,productIdList.toString())
+  return querySql
 }
 
 var findRelationBySkuOrDesc = async function (params) {
@@ -1526,7 +1545,7 @@ var deleteProduct = async function (params) {
   let preOutData = await checkIsPreOut(params)
   if (preOutData.length > 0) {
     success = false
-    msg = `以下预出库数据(id)包含该产品尚未出库:`+preOutData.toString()
+    msg = `以下预出库数据(id)包含该产品尚未出库:` + preOutData.toString()
     return {
       success: success,
       msg: msg

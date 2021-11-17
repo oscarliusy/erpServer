@@ -41,7 +41,7 @@ router.post('/edit',async(ctx)=>{
 })
 
 router.post('/pmrelation/list',async(ctx)=>{
-  const data = await productController.findAllRelationShip()
+  const data = await productController.findAllRelationShip(ctx.request.body)
   ctx.body = {
     code:200,
     errMsg:"",
