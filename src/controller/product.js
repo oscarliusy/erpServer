@@ -1464,7 +1464,7 @@ var getProductIdListWithSearcher = async function (params) {
       ],
       is_deleted: [0],
     },
-    order:[['id', 'DESC']],
+    order: [['id', 'DESC']],
     limit: params.limited,
     offset: params.offset
   })
@@ -1657,18 +1657,30 @@ var createProductList = async function (data) {
   let res = {}
   res.insertResult = { success: true, message: "" }
   res.productExistInfo = await findProductExist(data)
-  materialExistInfo = await findMaterialExists(data)
+  let brandExistInfo = await findBrandExist(data)
+  let materialExistInfo = await findMaterialExists(data)
+  let siteExistInfo = await findSiteExists(data)
   res.materialExistInfo = {
     allMaterialExist: materialExistInfo.allMaterialExist,
     materialNotFindList: materialExistInfo.materialNotFindList
   }
-  let siteExistInfo = await findSiteExists(data)
-  res.allSitesExist = siteExistInfo.allSitesFind
-  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.allSitesExist) {
-    let insertResult = await insertProduct(data, siteExistInfo.siteMap, materialExistInfo.materailMap)
+  res.siteExistInfo = {
+    allSitesExist: siteExistInfo.allSitesExist,
+    sitNotFound: siteExistInfo.sitNotFound
+  }
+  res.brandExistInfo = {
+    allBrandExist: brandExistInfo.allBrandExist,
+    brandNotFound: brandExistInfo.brandNotFound
+  }
+  let mapInfo = {
+    siteMap: siteExistInfo.siteMap,
+    materialMap: materialExistInfo.materailMap,
+    brandMap: brandExistInfo.brandMap
+  }
+  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.siteExistInfo.allSitesExist) {
+    let insertResult = await insertProduct(data, mapInfo)
     res.insertResult = insertResult
   }
-
   return res
 }
 
@@ -1696,6 +1708,33 @@ var findProductExist = async function (params) {
     skuList: skuList,
     allNewProductNotExist: allNewProductNotExist
   }
+}
+
+var findBrandExist = async function (params) {
+  let brandNameList = []
+  let brandMap = new Map()
+  let brandNotFound = []
+  let allBrandExist = true
+  params.map(item => {
+    brandNameList.push(item.brandName)
+  })
+  let result = await models.brand.findAll({
+    where: {
+      name: {
+        [Op.in]: brandNameList
+      }
+    }
+  })
+  result.map(item => {
+    brandMap.set(item.name, item.id)
+  })
+  brandNameList.map(item => {
+    if (!brandMap.has(item)) {
+      brandNotFound.push(item)
+    }
+  })
+  allBrandExist = brandNotFound.length === 0 ? true : false
+  return { allBrandExist: allBrandExist, brandMap: brandMap, brandNotFound: brandNotFound }
 }
 
 var findMaterialExists = async function (params) {
@@ -1738,7 +1777,8 @@ var findMaterialExists = async function (params) {
 var findSiteExists = async function (data) {
   let siteNameList = []
   let siteMap = new Map()
-  let allSitesFind = true
+  let allSitesExist = true
+  let sitNotFound = []
   data.map(item => {
     siteNameList.push(item.site)
   })
@@ -1754,14 +1794,18 @@ var findSiteExists = async function (data) {
   })
   data.map(item => {
     if (!siteMap.has(item.site)) {
-      allSitesFind = false
+      sitNotFound.push(item.site)
+      allSitesExist = false
     }
   })
-  return { siteMap: siteMap, allSitesFind: allSitesFind }
+  return { siteMap: siteMap, allSitesExist: allSitesExist, sitNotFound: sitNotFound }
 }
 
-var insertProduct = async function (data, siteMap, materailMap) {
-  let productInsertSql = `INSERT INTO producttemp (sku,title,description,site_id,creater_id) VALUES ($1,$2,$3,$4,$5)`
+var insertProduct = async function (data, mapInfo) {
+  let siteMap = mapInfo.siteMap
+  let materialMap = mapInfo.materialMap
+  let brandMap = mapInfo.brandMap
+  let productInsertSql = `INSERT INTO producttemp (sku,title,description,site_id,creater_id,brand) VALUES ($1,$2,$3,$4,$5,$6)`
   let findProductIdSql = `SELECT id FROM producttemp WHERE sku = $1`
   let productMaterialInsertSql = `INSERT INTO productmaterial (pmAmount,pmProduct_id,pmMaterial_id) VALUES ($1,$2,$3)`
   let message = ``, errorRow = ``
@@ -1770,9 +1814,8 @@ var insertProduct = async function (data, siteMap, materailMap) {
   try {
     for await (let product of data) {
       errorRow = product.sku
-      let creater_id = product.creater_id
       await models.sequelize.query(productInsertSql, {
-        bind: [product.sku, product.title, product.description, siteMap.get(product.site), product.creater_id],
+        bind: [product.sku, product.title, product.description, siteMap.get(product.site), product.creater_id, brandMap.get(product.brandName)],
         transaction: t
       })
       let [idResult, metadata] = await models.sequelize.query(findProductIdSql, {
@@ -1781,7 +1824,7 @@ var insertProduct = async function (data, siteMap, materailMap) {
       })
       for await (let material of product.materialList) {
         await models.sequelize.query(productMaterialInsertSql, {
-          bind: [material.materialAmount, idResult[0].id, materailMap.get(material.uniqueId)],
+          bind: [material.materialAmount, idResult[0].id, materialMap.get(material.uniqueId)],
           transaction: t,
         })
       }
@@ -1790,6 +1833,7 @@ var insertProduct = async function (data, siteMap, materailMap) {
     await t.commit()
   } catch (error) {
     await t.rollback()
+    success = false
     message = "产品" + errorRow + "创建失败"
     console.log(error)
   }
