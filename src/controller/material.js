@@ -172,23 +172,39 @@ const addInventoryMaterial = async (params) => {
 
 const uploadNewMaterial = async (params) => {
   const t = await models.sequelize.transaction();
+  let errList = []
+  let success = false
+  let message = ''
   params.data.map(item => {
+    //排除数量、价格为负数，数量不是整数
+    if (item.amount < 0 || item.price < 0 || (item.amount % 1 !== 0)) {
+      errList.push(item.uniqueId)
+    }
     item["userPurchase_id"] = params.user
   })
-  let code
+  if (errList.length > 0) {
+    message = "导入失败"
+    return {
+      msg: message,
+      success: success,
+      errList: errList
+    }
+  }
+
   try {
-    await models.inventorymaterial.bulkCreate(params.data)
-    message = "导入成功"
+    await models.inventorymaterial.bulkCreate(params.data, { transaction: t })
+    success = true
     code = 200
     await t.commit()
   } catch (err) {
     message = "导入失败"
     await t.rollback()
-    code = 500
+    success = false
   }
   return {
     msg: message,
-    code: code
+    success: success,
+    errList: errList
   }
 }
 
@@ -225,8 +241,8 @@ const createInstock = async (params) => {
         throw new Error(msg)
       } else {
         //判断是不是浮点数
-        if ((material.instockAmount % 1) != 0) {
-          msg = `${material.uniqueId}的入库数量不是整数`
+        if ((material.instockAmount % 1) != 0 || material.instockAmount < 0) {
+          msg = `${material.uniqueId}的入库数量不是整数或者是负数`
           success = false
           throw new Error(msg)
         }
