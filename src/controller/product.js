@@ -437,7 +437,6 @@ const preoutstockEdit = async (params) => {
 
 const preoutstockCreate = async (params) => {
   try {
-    console.log('preoutstockCreate:', params.products)
     let addObj = await buildPreoutstockUpdataParams(params)
     let preoutstockObj = await models.preoutstock.create(addObj)
     await createPreoutstockItem(preoutstockObj, params)
@@ -1703,7 +1702,6 @@ var findProductExist = async function (params) {
   params.map(item => {
     let lowCase = item.sku.toLowerCase()
     if (allExistProductsWithLowCase.has(lowCase) || RepeatCase.has(lowCase)) {
-      console.log(item.sku)
       upOrLowCase.push(item.sku)
     }
     RepeatCase.add(lowCase)

@@ -21,8 +21,6 @@ router.post('/siteMap',async(ctx)=>{
 })
 
 router.post('/detail/:id',async(ctx)=>{
-  //console.log(ctx.params.id)
-  
   const data = await productController.findProductById(ctx.params.id)
   ctx.body = {
     code:200,
@@ -33,15 +31,6 @@ router.post('/detail/:id',async(ctx)=>{
 
 router.post('/edit',async(ctx)=>{
   const data = await productController.changeProduct(ctx.request.body)
-  ctx.body = {
-    code:200,
-    errMsg:"",
-    data:data
-  }
-})
-
-router.post('/pmrelation/list',async(ctx)=>{
-  const data = await productController.findAllRelationShip(ctx.request.body)
   ctx.body = {
     code:200,
     errMsg:"",
