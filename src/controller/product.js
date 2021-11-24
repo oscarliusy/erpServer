@@ -1654,60 +1654,73 @@ var checkIsPreOut = async function (params) {
 
 
 var createProductList = async function (data) {
-  let res = {}
-  res.insertResult = { success: true, message: "" }
-  res.productExistInfo = await findProductExist(data)
-  let brandExistInfo = await findBrandExist(data)
-  let materialExistInfo = await findMaterialExists(data)
-  let siteExistInfo = await findSiteExists(data)
-  res.materialExistInfo = {
-    allMaterialExist: materialExistInfo.allMaterialExist,
-    materialNotFindList: materialExistInfo.materialNotFindList
-  }
-  res.siteExistInfo = {
-    allSitesExist: siteExistInfo.allSitesExist,
-    sitNotFound: siteExistInfo.sitNotFound
-  }
-  res.brandExistInfo = {
-    allBrandExist: brandExistInfo.allBrandExist,
-    brandNotFound: brandExistInfo.brandNotFound
-  }
-  let mapInfo = {
-    siteMap: siteExistInfo.siteMap,
-    materialMap: materialExistInfo.materailMap,
-    brandMap: brandExistInfo.brandMap
-  }
-  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.siteExistInfo.allSitesExist) {
+  let { res, mapInfo } = await checkAllConditions(data)
+  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.siteExistInfo.allSitesExist && res.amountInfo.amountNInt) {
     let insertResult = await insertProduct(data, mapInfo)
     res.insertResult = insertResult
   }
   return res
 }
 
-var findProductExist = async function (params) {
-  let productList = []
-  let skuList = []
-  let allNewProductNotExist = true
-  params.map(item => {
-    productList.push(item.sku)
-  })
-  let result = await models.producttemp.findAll({
-    where: {
-      sku: {
-        [Op.in]: productList
-      }
-    }
-  })
-  if (result.length > 0) {
-    result.map(item => {
-      skuList.push(item.sku)
-    })
+var checkAllConditions = async function (data) {
+  let res = {}
+  res.insertResult = { success: true, message: "" }
+  res.productExistInfo = await findProductExist(data)
+  let brandExistInfo = await findBrandExist(data)
+  let materialExistInfo = await findMaterialExists(data)
+  let siteExistInfo = await findSiteExists(data)
+  let amountInfo = await checkAmount(data)
+  res.materialExistInfo = {
+    allMaterialExist: materialExistInfo.allMaterialExist,
+    materialNotFindList: materialExistInfo.materialNotFindList
   }
-  allNewProductNotExist = skuList.length === 0 ? true : false
+  res.siteExistInfo = {
+    allSitesExist: siteExistInfo.allSitesExist,
+    siteNotFound: siteExistInfo.siteNotFound
+  }
+  res.brandExistInfo = {
+    allBrandExist: brandExistInfo.allBrandExist,
+    brandNotFound: brandExistInfo.brandNotFound
+  }
+  res.amountInfo = amountInfo
+  let mapInfo = {
+    siteMap: siteExistInfo.siteMap,
+    materialMap: materialExistInfo.materailMap,
+    brandMap: brandExistInfo.brandMap
+  }
+  return { res: res, mapInfo: mapInfo }
+}
+
+var findProductExist = async function (params) {
+  //存放已经存在的sku
+  let upOrLowCase = []
+  let RepeatCase = new Set()
+  let allNewProductNotExist = true
+  let allExistProductsWithLowCase = await getAllExistProducts()
+  params.map(item => {
+    let lowCase = item.sku.toLowerCase()
+    if (allExistProductsWithLowCase.has(lowCase) || RepeatCase.has(lowCase)) {
+      console.log(item.sku)
+      upOrLowCase.push(item.sku)
+    }
+    RepeatCase.add(lowCase)
+  })
+  allNewProductNotExist = upOrLowCase.length === 0 ? true : false
+
   return {
-    skuList: skuList,
+    upOrLowCase: upOrLowCase,
     allNewProductNotExist: allNewProductNotExist
   }
+}
+
+var getAllExistProducts = async function () {
+  let sql = "SELECT sku FROM producttemp"
+  let res = new Set()
+  let [sqlResult, metadata] = await models.sequelize.query(sql)
+  sqlResult.map(item => {
+    res.add(item.sku.toLowerCase())
+  })
+  return res
 }
 
 var findBrandExist = async function (params) {
@@ -1778,7 +1791,7 @@ var findSiteExists = async function (data) {
   let siteNameList = []
   let siteMap = new Map()
   let allSitesExist = true
-  let sitNotFound = []
+  let siteNotFound = []
   data.map(item => {
     siteNameList.push(item.site)
   })
@@ -1794,11 +1807,26 @@ var findSiteExists = async function (data) {
   })
   data.map(item => {
     if (!siteMap.has(item.site)) {
-      sitNotFound.push(item.site)
+      siteNotFound.push(item.site)
       allSitesExist = false
     }
   })
-  return { siteMap: siteMap, allSitesExist: allSitesExist, sitNotFound: sitNotFound }
+  return { siteMap: siteMap, allSitesExist: allSitesExist, siteNotFound: siteNotFound }
+}
+
+var checkAmount = async function (data) {
+  let illegalSku = []
+  let amountNInt = true
+  data.map(item => {
+    if (item.amount % 1 !== 0 || item.amount <= 0) {
+      amountNInt = false
+      illegalSku.push(item.sku)
+    }
+  })
+  return {
+    amountNInt: amountNInt,
+    illegalSku: illegalSku
+  }
 }
 
 var insertProduct = async function (data, mapInfo) {
