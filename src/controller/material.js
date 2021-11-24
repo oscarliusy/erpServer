@@ -249,7 +249,8 @@ const createInstock = async (params) => {
         let updateAmount = result[0].amount + material.instockAmount
         let materialId = result[0].id
         await models.sequelize.query(updatSql, {
-          bind: [updateAmount, materialId]
+          bind: [updateAmount, materialId],
+          transaction: t
         })
         //创建入库对象
         const instockObj = await models.instock.create({
