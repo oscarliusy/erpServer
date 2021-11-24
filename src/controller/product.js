@@ -1655,7 +1655,8 @@ var checkIsPreOut = async function (params) {
 
 var createProductList = async function (data) {
   let { res, mapInfo } = await checkAllConditions(data)
-  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && res.siteExistInfo.allSitesExist && res.amountInfo.amountNInt) {
+  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && 
+        res.siteExistInfo.allSitesExist && res.amountInfo.amountNInt && res.emptyInfo.hasEmpty) {
     let insertResult = await insertProduct(data, mapInfo)
     res.insertResult = insertResult
   }
@@ -1670,6 +1671,7 @@ var checkAllConditions = async function (data) {
   let materialExistInfo = await findMaterialExists(data)
   let siteExistInfo = await findSiteExists(data)
   let amountInfo = await checkAmount(data)
+  let emptyInfo = await checkEmpty(data)
   res.materialExistInfo = {
     allMaterialExist: materialExistInfo.allMaterialExist,
     materialNotFindList: materialExistInfo.materialNotFindList
@@ -1682,6 +1684,7 @@ var checkAllConditions = async function (data) {
     allBrandExist: brandExistInfo.allBrandExist,
     brandNotFound: brandExistInfo.brandNotFound
   }
+  res.emptyInfo = emptyInfo
   res.amountInfo = amountInfo
   let mapInfo = {
     siteMap: siteExistInfo.siteMap,
@@ -1817,16 +1820,29 @@ var findSiteExists = async function (data) {
 var checkAmount = async function (data) {
   let illegalSku = []
   let amountNInt = true
-  data.map(item => {
-    if (item.amount % 1 !== 0 || item.amount <= 0) {
-      amountNInt = false
-      illegalSku.push(item.sku)
-    }
+  data.map(product => {
+    product.materialList.map(item => {
+      if (item.materialAmount % 1 !== 0 || item.materialAmount <= 0) {
+        amountNInt = false
+        illegalSku.push(item.sku)
+      }
+    })
   })
   return {
     amountNInt: amountNInt,
     illegalSku: illegalSku
   }
+}
+
+var checkEmpty = async function (data) {
+  let hasEmpty = false
+  data.map(item => {
+    //前端数据为空，那么就显示undefined，后端拿到的是字符串类型的 undefined
+    if (item.sku === 'undefined' || item.title === 'undefined' || item.description === 'undefined') {
+      hasEmpty = true
+    }
+  })
+  return { hasEmpty: hasEmpty }
 }
 
 var insertProduct = async function (data, mapInfo) {
