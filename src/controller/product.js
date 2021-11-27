@@ -1655,7 +1655,7 @@ var checkIsPreOut = async function (params) {
 var createProductList = async function (data) {
   let { res, mapInfo } = await checkAllConditions(data)
   if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && 
-        res.siteExistInfo.allSitesExist && res.amountInfo.amountNInt && res.emptyInfo.hasEmpty) {
+        res.siteExistInfo.allSitesExist && res.amountInfo.amountAllInt && !res.emptyInfo.hasEmpty) {
     let insertResult = await insertProduct(data, mapInfo)
     res.insertResult = insertResult
   }
@@ -1817,17 +1817,17 @@ var findSiteExists = async function (data) {
 
 var checkAmount = async function (data) {
   let illegalSku = []
-  let amountNInt = true
+  let amountAllInt = true
   data.map(product => {
     product.materialList.map(item => {
       if (item.materialAmount % 1 !== 0 || item.materialAmount <= 0) {
-        amountNInt = false
+        amountAllInt = false
         illegalSku.push(item.sku)
       }
     })
   })
   return {
-    amountNInt: amountNInt,
+    amountAllInt: amountAllInt,
     illegalSku: illegalSku
   }
 }
