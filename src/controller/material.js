@@ -231,6 +231,10 @@ const createInstock = async (params) => {
   const t = await models.sequelize.transaction()
   try {
     for await (let material of params.data.dataSource) {
+      material.uniqueId = material.uniqueId + ""
+      material.description = material.description+" "
+      material.uniqueId = material.uniqueId.trim()
+      material.description = material.description.trim()
       let [result, metadata] = await models.sequelize.query(getMaterialId, {
         bind: [material.uniqueId],
         transaction: t
