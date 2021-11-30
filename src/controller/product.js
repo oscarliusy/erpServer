@@ -668,7 +668,6 @@ const calcOutstockIndex = (params) => {
 const imOutStockUpload = async (productList, outItemList, outstockId) => {
   let msg = '', status = 'succeed'
   var negativeStock = 0
-  var negative_stock = []
   for (let productItem of productList) {
     let _amountOut = 0
     outItemList.forEach(outItem => {
@@ -1693,35 +1692,31 @@ var checkAllConditions = async function (data) {
 }
 
 var findProductExist = async function (params) {
-  //存放已经存在的sku
-  let upOrLowCase = []
-  let RepeatCase = new Set()
+  let productList = []
+  let reapeatSku = []
   let allNewProductNotExist = true
-  let allExistProductsWithLowCase = await getAllExistProducts()
   params.map(item => {
-    let lowCase = item.sku.toLowerCase()
-    if (allExistProductsWithLowCase.has(lowCase) || RepeatCase.has(lowCase)) {
-      upOrLowCase.push(item.sku)
-    }
-    RepeatCase.add(lowCase)
+    productList.push(item.sku)
   })
-  allNewProductNotExist = upOrLowCase.length === 0 ? true : false
-
+  let result = await models.producttemp.findAll({
+    where: {
+      sku: {
+        [Op.in]: productList
+      }
+    }
+  })
+  if (result.length > 0) {
+    result.map(item => {
+      reapeatSku.push(item.sku)
+    })
+  }
+  allNewProductNotExist = reapeatSku.length === 0 ? true : false
   return {
-    upOrLowCase: upOrLowCase,
+    reapeatSku: reapeatSku,
     allNewProductNotExist: allNewProductNotExist
   }
 }
 
-var getAllExistProducts = async function () {
-  let sql = "SELECT sku FROM producttemp"
-  let res = new Set()
-  let [sqlResult, metadata] = await models.sequelize.query(sql)
-  sqlResult.map(item => {
-    res.add(item.sku.toLowerCase())
-  })
-  return res
-}
 
 var findBrandExist = async function (params) {
   let brandNameList = []
