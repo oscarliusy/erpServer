@@ -517,25 +517,23 @@ const findSites = async () => {
  * 4.返回状态 
  */
 const outstockUpload = async (params) => {
+  let data = {}
   const { outstockParams, outItemList, productNotFound } = await buildOutstockParams(params)
   if (productNotFound.list.length > 0) {
     var msg = 'Product not found'
     var status = 'failed'
-    return {
-      productNotFound,
-      status,
-      msg
-    }
+    data.productNotFound = productNotFound
+    data.status = status
+    data.msg = msg
   } else {
     let outstockObj = await models.outstock.create(outstockParams)
     var { msg, status, negativeStock } = await buildOutstockItem(outstockObj, outItemList)
-    return {
-      productNotFound,
-      negativeStock,
-      status,
-      msg
-    }
+    data.productNotFound = productNotFound
+    data.negativeStock = negativeStock
+    data.status = status
+    data.msg = msg
   }
+  return data
 }
 
 const buildOutstockParams = async (params) => {
@@ -1654,6 +1652,7 @@ var checkIsPreOut = async function (params) {
 
 var createProductList = async function (data) {
   let { res, mapInfo } = await checkAllConditions(data)
+
   if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && 
         res.siteExistInfo.allSitesExist && res.amountInfo.amountAllInt && !res.emptyInfo.hasEmpty) {
     let insertResult = await insertProduct(data, mapInfo)
