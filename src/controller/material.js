@@ -175,6 +175,7 @@ const uploadNewMaterial = async (params) => {
   let errList = []
   let success = false
   let message = ''
+  let repeatList
   params.data.map(item => {
     //排除数量、价格为负数，数量不是整数
     if (item.amount < 0 || item.price < 0 || (item.amount % 1 !== 0)) {
@@ -182,12 +183,15 @@ const uploadNewMaterial = async (params) => {
     }
     item["userPurchase_id"] = params.user
   })
-  if (errList.length > 0) {
+  repeatList = await findMaterialExitst(params)
+  console.log(repeatList)
+  if (errList.length > 0 || repeatList.length > 0) {
     message = "导入失败"
     return {
       msg: message,
       success: success,
-      errList: errList
+      errList: errList,
+      repeatList: repeatList
     }
   }
 
@@ -204,9 +208,27 @@ const uploadNewMaterial = async (params) => {
   return {
     msg: message,
     success: success,
-    errList: errList
+    errList: errList,
+    repeatList: repeatList
   }
 }
+
+const findMaterialExitst = async (params) => {
+  let querySql = `SELECT uniqueId from inventorymaterial`
+  let set = new Set()
+  let repeatList = []
+  let [result, metadata] = await models.sequelize.query(querySql)
+  result.map(material => {
+    set.add(material.uniqueId.toLowerCase())
+  })
+  params.data.map(material => {
+    if (set.has(material.uniqueId.toLowerCase())) {
+      repeatList.push(material.uniqueId)
+    }
+  })
+  return repeatList
+}
+
 
 /**
  *零星入库 
@@ -232,7 +254,7 @@ const createInstock = async (params) => {
   try {
     for await (let material of params.data.dataSource) {
       material.uniqueId = material.uniqueId + ""
-      material.description = material.description+" "
+      material.description = material.description + " "
       material.uniqueId = material.uniqueId.trim()
       material.description = material.description.trim()
       let [result, metadata] = await models.sequelize.query(getMaterialId, {
