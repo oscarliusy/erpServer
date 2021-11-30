@@ -1816,7 +1816,7 @@ var checkAmount = async function (data) {
     product.materialList.map(item => {
       if (item.materialAmount % 1 !== 0 || item.materialAmount <= 0) {
         amountAllInt = false
-        illegalSku.push(item.sku)
+        illegalSku.push(product.sku)
       }
     })
   })
