@@ -184,7 +184,6 @@ const uploadNewMaterial = async (params) => {
     item["userPurchase_id"] = params.user
   })
   repeatList = await findMaterialExitst(params)
-  console.log(repeatList)
   if (errList.length > 0 || repeatList.length > 0) {
     message = "导入失败"
     return {
