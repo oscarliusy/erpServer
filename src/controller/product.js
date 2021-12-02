@@ -1650,8 +1650,8 @@ var checkIsPreOut = async function (params) {
 
 
 var createProductList = async function (data) {
+  console.log(data)
   let { res, mapInfo } = await checkAllConditions(data)
-
   if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && 
         res.siteExistInfo.allSitesExist && res.amountInfo.amountAllInt && !res.emptyInfo.hasEmpty) {
     let insertResult = await insertProduct(data, mapInfo)
@@ -1662,7 +1662,7 @@ var createProductList = async function (data) {
 
 var checkAllConditions = async function (data) {
   let res = {}
-  res.insertResult = { success: true, message: "" }
+  res.insertResult = { success: false, message: "" }
   res.productExistInfo = await findProductExist(data)
   let brandExistInfo = await findBrandExist(data)
   let materialExistInfo = await findMaterialExists(data)
