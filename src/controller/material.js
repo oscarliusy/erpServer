@@ -14,7 +14,8 @@ const findInventoryMaterialList = async (params) => {
     where = {
       [Op.or]: [
         { description: { [Op.like]: '%' + keyword + '%' } },
-        { uniqueId: { [Op.like]: '%' + keyword + '%' } }
+        { uniqueId: { [Op.like]: '%' + keyword + '%' } },
+        { uniqueId: { [Op.eq]: keyword } }
       ]
     }
   }
@@ -213,18 +214,27 @@ const uploadNewMaterial = async (params) => {
 }
 
 const findMaterialExitst = async (params) => {
-  let querySql = `SELECT uniqueId from inventorymaterial`
-  let set = new Set()
+  let materialSkuList = []
   let repeatList = []
-  let [result, metadata] = await models.sequelize.query(querySql)
-  result.map(material => {
-    set.add(material.uniqueId.toLowerCase())
-  })
   params.data.map(material => {
-    if (set.has(material.uniqueId.toLowerCase())) {
-      repeatList.push(material.uniqueId)
+    materialSkuList.push(material.uniqueId)
+  })
+
+  let result = await models.inventorymaterial.findAll({
+    where: {
+      uniqueId: {
+        [Op.in]: materialSkuList
+      }
     }
   })
+
+  for (let item of result) {
+    for (let materialSku of materialSkuList) {
+      if (item.uniqueId.toLowerCase === materialSku.toLowerCase) {
+        repeatList.push(materialSku)
+      }
+    }
+  }
   return repeatList
 }
 
