@@ -518,11 +518,12 @@ const findSites = async () => {
  */
 const outstockUpload = async (params) => {
   let data = {}
-  const { outstockParams, outItemList, productNotFound } = await buildOutstockParams(params)
-  if (productNotFound.list.length > 0) {
-    var msg = 'Product not found'
+  const { outstockParams, outItemList, productNotFound, sitNotfound } = await buildOutstockParams(params)
+  if (productNotFound.list.length > 0 || sitNotfound.list.length > 0) {
+    var msg = 'params not found'
     var status = 'failed'
     data.productNotFound = productNotFound
+    data.sitNotfound = sitNotfound
     data.status = status
     data.msg = msg
   } else {
@@ -546,7 +547,8 @@ const buildOutstockParams = async (params) => {
     _total_volume,
     _total_weight,
     outItemList,
-    productNotFound
+    productNotFound,
+    sitNotfound
   } = await calcOutstockIndex(params)
 
   outstockParams.total_freightfee = _total_freightfee
@@ -555,7 +557,8 @@ const buildOutstockParams = async (params) => {
   return {
     outstockParams,
     outItemList,
-    productNotFound
+    productNotFound,
+    sitNotfound
   }
 }
 
@@ -614,21 +617,30 @@ const calcOutstockIndex = (params) => {
     //   attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
     // })
     var productList = []
+    var sitNotfound = { list: [] }
     var productNotFound = { list: [] }
     for (let i = 0; i < params.products.length; i++) {
       var eachProduct = await models.producttemp.findOne({
         where: {
           sku: params.products[i].sku
         },
-        attributes: ['id', 'sku', 'dhlShippingFee', 'freightFee', 'weight', 'length', 'width', 'height'],
+        attributes: ['id', 'sku', 'dhlShippingFee', 'freightFee', 'weight', 'length', 'width', 'height', 'site_id'],
       })
-      if (typeof (eachProduct) != "undefined" && eachProduct != "" && eachProduct != null) {
+      var eachSite = await models.site.findOne({
+        where: {
+          id: eachProduct.site_id
+        }
+      })
+      if (eachSite.name !== params.products[i].site) {
+        sitNotfound.list.push(params.products[i].site)
+      }
+      if (typeof (eachProduct) != "undefined" || eachProduct != "" || eachProduct != null) {
         productList.push(eachProduct)
       } else {
         productNotFound.list.push(params.products[i])
       }
     }
-    //console.log(productList)
+    console.log(sitNotfound)
 
     let _total_freightfee = 0, _total_volume = 0, _total_weight = 0, outItemList = []
     productList.forEach((productItem, index) => {
@@ -660,7 +672,8 @@ const calcOutstockIndex = (params) => {
       _total_volume,
       _total_weight,
       outItemList,
-      productNotFound
+      productNotFound,
+      sitNotfound
     })
   })
 }
@@ -689,7 +702,6 @@ const imOutStockUpload = async (productList, outItemList, outstockId) => {
           cur_amount: _imObj.amount - _change
         })
       }
-
       await models.sequelize.query(`UPDATE inventorymaterial SET amount = amount-${_change} WHERE id = ${_imObj.id}`)
     }
   }
@@ -1652,8 +1664,8 @@ var checkIsPreOut = async function (params) {
 var createProductList = async function (data) {
   console.log(data)
   let { res, mapInfo } = await checkAllConditions(data)
-  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist && 
-        res.siteExistInfo.allSitesExist && res.amountInfo.amountAllInt && !res.emptyInfo.hasEmpty) {
+  if (res.productExistInfo.allNewProductNotExist && res.materialExistInfo.allMaterialExist &&
+    res.siteExistInfo.allSitesExist && res.amountInfo.amountAllInt && !res.emptyInfo.hasEmpty) {
     let insertResult = await insertProduct(data, mapInfo)
     res.insertResult = insertResult
   }
