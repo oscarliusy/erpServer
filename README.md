@@ -14,7 +14,7 @@
 
 # sequelize
 使用sequelize-auto生成model
-sequelize-auto -h localhost -d erpdb -u root -x 123456 -p 3306 -t login_outitem
+sequelize-auto -h localhost -d erpdb -u root -x 123456 -p 3306 -t tableName -o sequelizeTool/models
 
 # jenkins
 自动部署后端
