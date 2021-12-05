@@ -640,7 +640,6 @@ const calcOutstockIndex = (params) => {
         productNotFound.list.push(params.products[i])
       }
     }
-    console.log(sitNotfound)
 
     let _total_freightfee = 0, _total_volume = 0, _total_weight = 0, outItemList = []
     productList.forEach((productItem, index) => {
