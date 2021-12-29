@@ -17,9 +17,9 @@ const initKoa = () =>{
   })
 
   //调试时注释，运行时打开
-  // app.on('error',err=>{
-  //   Log.error.error(err)
-  // })
+  app.on('error',err=>{
+    Log.error.error(err)
+  })
 
   app.use(BodyParser())
 
