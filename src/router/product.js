@@ -159,8 +159,15 @@ router.post('/preoutstock/add',async(ctx)=>{
   }
 })
 
+/**
+ * 批量出库
+ * @ModifyReason 2021/12/28 表格列从(site,sku,amount)-->(brand,sku,amount)
+ *    controller从 outstockUpload --》 outstockUploadBrand
+ */
 router.post('/outstock/upload',async(ctx)=>{
-  const data = await productController.outstockUpload(ctx.request.body)
+  console.log(ctx.request.body)
+  const data = await productController.outstockUploadBrand(ctx.request.body)
+  
   ctx.body = {
     code:200,
     errMsg:"",

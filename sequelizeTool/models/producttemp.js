@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
     is_deleted: DataTypes.INTEGER(1)
   }, {});
   producttemp.associate = function(models) {
-    //物料与产品多对多
+    //belongsToMany物料与产品：多对多
     models.producttemp.belongsToMany(models.inventorymaterial,{
       through:{
         model:models.productmaterial,
@@ -43,21 +43,25 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey:'pmProduct_id',
       constraints:false
     })
+    //hasMany拥有多个：一对多
     models.producttemp.hasMany(models.productmaterial,
       {
         foreignKey:"pmProduct_id"
       }
     )
+    //belongsTo:属于:一对一
     models.producttemp.belongsTo(models.user,
       {
         foreignKey:"creater_id"
       }
     )
+    //一对一，产品拥有唯一的站点
     models.producttemp.belongsTo(models.site,
       {
         foreignKey:"site_id"
       }
     )
+    //多对多(Belongs-To-Many)
     models.producttemp.belongsToMany(models.preoutstock,{
       through:{
         model:models.preoutitem,

@@ -130,7 +130,7 @@ const findOutstockDetailById = async (params) => {
     attributes: ['amountOut'],
     include: [{
       model: models.producttemp,
-      models: models.negative_stock,
+      // models: models.negative_stock, //这个表实际并没被创建
       attributes: ['sku', 'site_id']
     }]
   })
@@ -517,6 +517,7 @@ const findSites = async () => {
  * 4.返回状态 
  */
 const outstockUpload = async (params) => {
+  // console.log(params);
   let data = {}
   const { outstockParams, outItemList, productNotFound, sitNotfound } = await buildOutstockParams(params)
   if (productNotFound.list.length > 0 || sitNotfound.list.length > 0) {
@@ -527,8 +528,35 @@ const outstockUpload = async (params) => {
     data.status = status
     data.msg = msg
   } else {
+    //创建outstock实例并写入db
     let outstockObj = await models.outstock.create(outstockParams)
+    //创建outitem实例，并写入db
     var { msg, status, negativeStock } = await buildOutstockItem(outstockObj, outItemList)
+    data.productNotFound = productNotFound
+    data.negativeStock = negativeStock
+    data.status = status
+    data.msg = msg
+  }
+  return data
+}
+
+/**
+ * 批量出库(品牌+sku+数量)
+ */
+const outstockUploadBrand = async (params) => {
+  // console.log(params)
+  let data = {}
+  const { outstockParams, outItemList, productNotFound, brandNotFound } = await buildOutStockParamsBrand(params)
+  if (productNotFound.list.length > 0 || brandNotFound.list.length > 0) {
+    var msg = 'params not found'
+    var status = 'failed'
+    data.productNotFound = productNotFound
+    data.brandNotFound = brandNotFound
+    data.status = status
+    data.msg = msg
+  } else {
+    let outstockObj = await models.outstock.create(outstockParams)
+    var { msg, status, negativeStock } = await buildOutstockItemBrand(outstockObj, outItemList)
     data.productNotFound = productNotFound
     data.negativeStock = negativeStock
     data.status = status
@@ -540,6 +568,7 @@ const outstockUpload = async (params) => {
 const buildOutstockParams = async (params) => {
   let outstockParams = {}
   outstockParams = JSON.parse(JSON.stringify(params))
+  // console.log(outstockParams)
   delete outstockParams.products
   //delete outstockParams.authToken
   const {
@@ -563,14 +592,42 @@ const buildOutstockParams = async (params) => {
 }
 
 /**
+ * 批量出库构造参数(按品牌检索)
+ */
+const buildOutStockParamsBrand = async (params) => {
+  let outstockParams = {}
+  outstockParams = JSON.parse(JSON.stringify(params))
+  delete outstockParams.products
+  const {
+    _total_freightfee,
+    _total_volume,
+    _total_weight,
+    outItemList,
+    productNotFound,
+    brandNotFound
+  } = await calcOutstockIndexBrand(params)
+  outstockParams.total_freightfee = _total_freightfee
+  outstockParams.total_volume = _total_volume
+  outstockParams.total_weight = _total_weight
+  return {
+    outstockParams,
+    outItemList,
+    productNotFound,
+    brandNotFound
+  }
+}
+
+/**
  * 
  *
  */
 const buildOutstockItem = async (outstockObj, outItemList) => {
+  //productIds:待出库的产品id列表
   const productIds = outItemList.map(item => {
     return item.productName_id
   })
 
+  //productList:待出库的产品对象列表，每个对象包含对应的物料id+消耗数量
   const productList = await models.producttemp.findAll({
     where: {
       id: productIds
@@ -582,11 +639,13 @@ const buildOutstockItem = async (outstockObj, outItemList) => {
     }
   })
 
+  //计算单个product的参数
   productList.forEach((productItem, index) => {
     let outitemTemp = {}
     outItemList.forEach((outItem) => {
       if (outItem.productName_id === productItem.id) outitemTemp = outItem
     })
+    //如果前面没有传入outitemTemp.site，可能会有问题，最好能看看中间参数
     outstockObj.setProducttemps(productItem,
       {
         through:
@@ -605,39 +664,92 @@ const buildOutstockItem = async (outstockObj, outItemList) => {
   return { msg, status, negativeStock }
 }
 
+
+const buildOutstockItemBrand = async (outstockObj, outItemList) => {
+  const productIds = outItemList.map(item => {
+    return item.productName_id
+  })
+  const productList = await models.producttemp.findAll({
+    where: {
+      id: productIds
+    },
+    attributes: ['id'],
+    include: {
+      model: models.inventorymaterial,
+      attributes: ['id', 'amount']
+    }
+  })
+  productList.forEach((productItem, index) => {
+    let outitemTemp = {}
+    outItemList.forEach((outItem) => {
+      if (outItem.productName_id === productItem.id) outitemTemp = outItem
+    })
+
+    outstockObj.setProducttemps(productItem,
+      {
+        through:
+        {
+          amountOut: outitemTemp.amountOut,
+          volume: outitemTemp.volume,
+          weight: outitemTemp.weight,
+          freightfee: outitemTemp.freightfee,
+          brand: outitemTemp.brand
+        }
+      })
+  })
+  const { msg, status, negativeStock } = await imOutStockUpload(productList, outItemList, outstockObj.dataValues.id)
+  //前面测试已通过,剩下一个物料数量扣除,存在一些问题,先不做
+  return { msg, status, negativeStock }
+
+}
+/**
+ * 1.查询出库product是否存在，siteName是否匹配
+ * 2.计算符合条件的产品的出库参数
+ * 3.将合格与不合格的数据存入不同数组返回
+ * 
+ * Debug:
+ *  2021/12/28 oscar_liu:
+ *    1.处理出库不存在的sku导致的 TypeError: Cannot read property 'site_id' of null
+ *    2.修改查询逻辑：
+ *      2.1 查询eachProduct，判断其是否存在
+ *      2.2 对存在的product，查询其site是否一致
+ */
 const calcOutstockIndex = (params) => {
   return new Promise(async (resolve, reject) => {
-    // const productSkus = params.products.map(item=>{
-    //   return item.sku
-    // })
-    // const productList = await models.producttemp.findAll({
-    //   where:{
-    //     sku:productSkus
-    //   },
-    //   attributes:['id','sku','dhlShippingFee','freightFee','weight','length','width','height'],
-    // })
     var productList = []
     var sitNotfound = { list: [] }
     var productNotFound = { list: [] }
+
     for (let i = 0; i < params.products.length; i++) {
+      //1.根据sku查找eachProduct(eachProduct 可能为null)
       var eachProduct = await models.producttemp.findOne({
         where: {
           sku: params.products[i].sku
         },
         attributes: ['id', 'sku', 'dhlShippingFee', 'freightFee', 'weight', 'length', 'width', 'height', 'site_id'],
       })
-      var eachSite = await models.site.findOne({
-        where: {
-          id: eachProduct.site_id
-        }
-      })
-      if (eachSite.name !== params.products[i].site) {
-        sitNotfound.list.push(params.products[i].site)
-      }
-      if (typeof (eachProduct) != "undefined" || eachProduct != "" || eachProduct != null) {
-        productList.push(eachProduct)
-      } else {
+
+      //2.判断eachProduct的状态
+      if (eachProduct == null || typeof (eachProduct) == undefined || eachProduct == ""
+        || eachProduct.site_id == null || typeof (eachProduct.site_id) == undefined) {
+        //2.1 eachProduct非法状态
         productNotFound.list.push(params.products[i])
+      } else {
+        //2.2 根据eachProduct.site_id 查找eachSite(eachSite可能为null)
+        var eachSite = await models.site.findOne({
+          where: {
+            id: eachProduct.site_id
+          }
+        })
+
+        //3.判断site与传入数据是否一致
+        if (eachSite == null || typeof (eachSite) == undefined || eachSite.name !== params.products[i].site) {
+          //3.1 不存在或不一致，加入报错集合
+          sitNotfound.list.push(params.products[i].site)
+        } else {
+          //3.2 全部匹配，加入合格集合
+          productList.push(eachProduct)
+        }
       }
     }
 
@@ -677,9 +789,88 @@ const calcOutstockIndex = (params) => {
   })
 }
 
+const calcOutstockIndexBrand =(params) => {
+  return new Promise(async (resolve, reject) => {
+    var productList = []
+    var brandNotFound = { list: [] }
+    var productNotFound = { list: [] }
+
+    for (let i = 0; i < params.products.length; i++) {
+      //1.根据sku查找eachProduct(eachProduct 可能为null)
+      var eachProduct = await models.producttemp.findOne({
+        where: {
+          sku: params.products[i].sku
+        },
+        attributes: ['id', 'sku', 'dhlShippingFee', 'freightFee', 'weight', 'length', 'width', 'height', 'site_id', 'brand'],
+      })
+
+      //2.判断eachProduct的状态
+      if (eachProduct == null || typeof (eachProduct) == undefined || eachProduct == ""
+        || eachProduct.brand == null || typeof (eachProduct.brand) == undefined) {
+        //2.1 eachProduct非法状态
+        productNotFound.list.push(params.products[i])
+      } else {
+        //2.2 根据eachProduct.brand 查找eachBrand(eachBrand可能为null)
+        var eachBrand = await models.brand.findOne({
+          where: { id: eachProduct.brand }
+        })
+
+        //3.判断brand与传入数据是否一致
+        if (eachBrand == null || typeof (eachBrand) == undefined || eachBrand.name !== params.products[i].brand) {
+          //3.1 不存在或不一致，加入报错集合
+          brandNotFound.list.push(params.products[i].brand)
+        } else {
+          //3.2 全部匹配，加入合格集合
+          productList.push(eachProduct)
+        }
+      }
+    }
+
+    let _total_freightfee = 0, _total_volume = 0, _total_weight = 0, outItemList = []
+    productList.forEach((productItem, index) => {
+      let _amount = 0, temp = {}, _brand = ''
+      params.products.forEach(paramItem => {
+        if (paramItem.sku === productItem.sku) {
+          _amount = paramItem.amount
+          _brand = paramItem.brand
+        }
+      })
+      let item_freightfee = Number(calcFreightFee(productItem, _amount))
+      let item_volume = Number(calcVolume(productItem, _amount))
+      let item_weight = Number(calcWeight(productItem, _amount))
+
+      temp.productName_id = productItem.id
+      temp.amountOut = _amount
+      temp.volume = item_volume
+      temp.freightfee = item_freightfee
+      temp.weight = item_weight
+      temp.brand = _brand
+      outItemList.push(temp)
+      _total_freightfee += item_freightfee
+      _total_volume += item_volume
+      _total_weight += item_weight
+
+    })
+    resolve({
+      _total_freightfee,
+      _total_volume,
+      _total_weight,
+      outItemList,
+      productNotFound,
+      brandNotFound
+    })
+  })
+}
+
+/**
+ * 出库时，减去出库物料的数量
+ */
 const imOutStockUpload = async (productList, outItemList, outstockId) => {
+  // console.log(productList)
+  // console.log(outItemList)
   let msg = '', status = 'succeed'
-  var negativeStock = 0
+  //处理出库为负数的信息，但是表还没创建
+   var negativeStock = 0
   for (let productItem of productList) {
     let _amountOut = 0
     outItemList.forEach(outItem => {
@@ -691,16 +882,17 @@ const imOutStockUpload = async (productList, outItemList, outstockId) => {
 
     for (let _imObj of _imList) {
       let _change = _amountOut * _imObj.productmaterial.pmAmount
-      if (_imObj.amount - _change < 0) {
-        msg = `${_imObj.uniqueId}-物料数量已小于0,请及时修改或补充`
-        negativeStock++
-        await models.negative_stock.create({
-          meterial_unique_id: _imObj.id,
-          outstock_id: outstockId,
-          pre_amount: _imObj.amount,
-          cur_amount: _imObj.amount - _change
-        })
-      }
+      //处理出库为负数的信息，但是表还没创建，这里先不管了
+      // if (_imObj.amount - _change < 0) {
+      //   msg = `${_imObj.uniqueId}-物料数量已小于0,请及时修改或补充`
+      //   negativeStock++
+      //   await models.negative_stock.create({
+      //     meterial_unique_id: _imObj.id,
+      //     outstock_id: outstockId,
+      //     pre_amount: _imObj.amount,
+      //     cur_amount: _imObj.amount - _change
+      //   })
+      // }
       await models.sequelize.query(`UPDATE inventorymaterial SET amount = amount-${_change} WHERE id = ${_imObj.id}`)
     }
   }
@@ -1909,5 +2101,6 @@ module.exports = {
   findAllRelationShip,
   showNoneProductMeterial,
   deleteProduct,
-  createProductList
+  createProductList,
+  outstockUploadBrand
 }

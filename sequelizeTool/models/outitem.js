@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
     freightfee: DataTypes.DECIMAL,
     site:DataTypes.STRING(30)
   }, {});
+  //outitem是outstock和producttemp的关联对象
   outitem.associate = function(models) {
     models.outitem.belongsTo(models.outstock,
       {

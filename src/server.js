@@ -16,6 +16,7 @@ const initKoa = () =>{
     Log.req.info(`${ctx.method} ${ctx.path} - ${ms}ms`)
   })
 
+  //调试时注释，运行时打开
   // app.on('error',err=>{
   //   Log.error.error(err)
   // })

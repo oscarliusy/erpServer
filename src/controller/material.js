@@ -3,6 +3,7 @@ const Op = models.Sequelize.Op
 const CONSTANT = require('../constant/models')
 
 const findInventoryMaterialList = async (params) => {
+
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
   const keyword = params.keyword || ''

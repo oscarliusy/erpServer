@@ -10,11 +10,13 @@ module.exports = (sequelize, DataTypes) => {
     total_weight:DataTypes.DECIMAL
   }, {});
   outstock.associate = function(models) {
+    //outstock拥有单一的user：出库人
     models.outstock.belongsTo(models.user,
       {
         foreignKey:"userOutstock_id"
       }
     )
+    //outstock拥有多个producttemp（出库产品），通过关联项outitem建立关系
     models.outstock.belongsToMany(models.producttemp,{
       through:{
         model:models.outitem,
@@ -23,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey:'master_id',
       constraints:false
     })
+    //outstock拥有多个outitem
     models.outstock.hasMany(models.outitem,
       {
         foreignKey:"master_id"
