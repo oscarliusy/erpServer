@@ -7,7 +7,12 @@ module.exports = (sequelize, DataTypes) => {
     volume:DataTypes.DECIMAL,
     weight: DataTypes.DECIMAL,
     freightfee: DataTypes.DECIMAL,
-    site:DataTypes.STRING(30)
+    site:DataTypes.STRING(30),
+    //增加品牌字段，并不是用外键的形式，而是直接写字符串
+    brand:{
+      type:DataTypes.STRING(30),
+      defaultValue:""
+    }
   }, {});
   //outitem是outstock和producttemp的关联对象
   outitem.associate = function(models) {
