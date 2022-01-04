@@ -117,6 +117,9 @@ const editLogDataHandler = (result) => {
   return data
 }
 
+/**
+ * 2022/1/4 根据需求，加入brand字段
+ */
 const findOutstockDetailById = async (params) => {
   const offset = parseInt(params.offset) || 0
   const limited = parseInt(params.limited) || 10
@@ -127,7 +130,8 @@ const findOutstockDetailById = async (params) => {
     order: [['amountOut', 'DESC']],//ASC:正序  DESC:倒序
     offset: offset,
     limit: limited,
-    attributes: ['amountOut'],
+    //加入brand字段
+    attributes: ['amountOut','brand'],
     include: [{
       model: models.producttemp,
       // models: models.negative_stock, //这个表实际并没被创建
@@ -139,6 +143,9 @@ const findOutstockDetailById = async (params) => {
   return data
 }
 
+/**
+ * 2022/1/4 根据需求，加入brand字段
+ */
 const outstockDetailDataHandler = async (result) => {
   let data = {}
   const siteMap = await models.site.findAll({
@@ -155,6 +162,9 @@ const outstockDetailDataHandler = async (result) => {
         temp[key] = getSiteName(siteMap, item.producttemp.site_id)
       } else if (key === 'sku') {
         temp[key] = item.producttemp[key]
+        //加入brand字段
+      }else if(key === 'brand'){
+        temp[key] = item.brand
       }
     })
     return temp
@@ -645,7 +655,7 @@ const buildOutstockItem = async (outstockObj, outItemList) => {
     outItemList.forEach((outItem) => {
       if (outItem.productName_id === productItem.id) outitemTemp = outItem
     })
-    //如果前面没有传入outitemTemp.site，可能会有问题，最好能看看中间参数
+    //如果前面没有传入outitemTemp.site，可能会有问题，最好能看看中间参数,猜测这里创建outitem对象并插入db
     outstockObj.setProducttemps(productItem,
       {
         through:
@@ -666,6 +676,7 @@ const buildOutstockItem = async (outstockObj, outItemList) => {
 
 
 const buildOutstockItemBrand = async (outstockObj, outItemList) => {
+  // console.log(outItemList)
   const productIds = outItemList.map(item => {
     return item.productName_id
   })
@@ -693,6 +704,7 @@ const buildOutstockItemBrand = async (outstockObj, outItemList) => {
           volume: outitemTemp.volume,
           weight: outitemTemp.weight,
           freightfee: outitemTemp.freightfee,
+          site: outitemTemp.site,
           brand: outitemTemp.brand
         }
       })
@@ -845,6 +857,8 @@ const calcOutstockIndexBrand =(params) => {
       temp.freightfee = item_freightfee
       temp.weight = item_weight
       temp.brand = _brand
+      //加个空字符串占位site
+      temp.site = ""
       outItemList.push(temp)
       _total_freightfee += item_freightfee
       _total_volume += item_volume

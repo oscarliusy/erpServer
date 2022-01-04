@@ -32,6 +32,7 @@ Object.keys(db).forEach(modelName => {
   }
 });
 
+//这两个不一样哦，不要删错了
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 

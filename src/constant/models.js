@@ -83,7 +83,7 @@ const PRODUCT_FOR_PREOUTSTOCK_KEYS = ['id','sku','childAsin','title','site']
 
 const OUTSTOCKKEYS = ['id','code','c_time','description','total_weight','total_volume','total_freightfee','userOutstock_id']
 
-const OUTSTOCK_DETAIL_KEYS = ['site','sku','amount']
+const OUTSTOCK_DETAIL_KEYS = ['site','sku','amount','brand']
 
 const MATERIAL_EDITLOG_KEYS = ['id','createAt','user','action']
 

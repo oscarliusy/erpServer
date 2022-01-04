@@ -16,6 +16,9 @@
 使用sequelize-auto生成model
 sequelize-auto -h localhost -d erpdb -u root -x 123456 -p 3306 -t tableName -o sequelizeTool/models
 
+使用sequelize-migration进行数据库升级(增减字段等)
+成功后，在run.sh中使用npx sequelize-cli db:migrate --env production 进行生产环境的升级
+
 # jenkins
 自动部署后端
 运行run.sh,调用package.json中的scripts "prd"
