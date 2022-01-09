@@ -158,12 +158,16 @@ const outstockDetailDataHandler = async (result) => {
     outstockKeys.forEach(key => {
       if (key === 'amount') {
         temp[key] = item.amountOut
-      } else if (key === 'site') {
-        temp[key] = getSiteName(siteMap, item.producttemp.site_id)
-      } else if (key === 'sku') {
+      } 
+      //2022/1/9 暂时取消site字段
+      // else if (key === 'site') {
+      //   temp[key] = getSiteName(siteMap, item.producttemp.site_id)
+      // }
+      else if (key === 'sku') {
         temp[key] = item.producttemp[key]
         //加入brand字段
-      }else if(key === 'brand'){
+      }
+      else if(key === 'brand'){
         temp[key] = item.brand
       }
     })

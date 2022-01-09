@@ -1,0 +1,6 @@
+[2022-01-09T11:06:00.723] [INFO] req - OPTIONS /api/v1/material/list - 2ms
+[2022-01-09T11:06:00.837] [INFO] req - POST /api/v1/material/list - 109ms
+[2022-01-09T11:06:05.269] [INFO] req - OPTIONS /api/v1/product/outstocklog - 0ms
+[2022-01-09T11:06:05.281] [INFO] req - POST /api/v1/product/outstocklog - 10ms
+[2022-01-09T11:06:06.406] [INFO] req - OPTIONS /api/v1/product/outstock/detail - 0ms
+[2022-01-09T11:06:06.427] [INFO] req - POST /api/v1/product/outstock/detail - 19ms
