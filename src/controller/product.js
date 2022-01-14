@@ -611,6 +611,7 @@ const buildOutstockParams = async (params) => {
 const buildOutStockParamsBrand = async (params) => {
   let outstockParams = {}
   outstockParams = JSON.parse(JSON.stringify(params))
+
   delete outstockParams.products
   const {
     _total_freightfee,
@@ -805,6 +806,21 @@ const calcOutstockIndex = (params) => {
   })
 }
 
+/**
+ * trim() 方法不适用于 null, undefined, Number 类型。
+ * trim() 方法用于删除字符串的头尾空白符，空白符包括：空格、制表符 tab、换行符等其他空白符等。
+ */
+const trimInput = (input) =>{
+  if(input == null || typeof (input) == undefined || input instanceof Number){
+    return input
+  }else{
+    return input.trim();
+  }
+}
+
+/**
+ * 2022/1/14 加入trim函数，处理前后空格问题
+ */
 const calcOutstockIndexBrand =(params) => {
   return new Promise(async (resolve, reject) => {
     var productList = []
@@ -812,6 +828,8 @@ const calcOutstockIndexBrand =(params) => {
     var productNotFound = { list: [] }
 
     for (let i = 0; i < params.products.length; i++) {
+      params.products[i].sku = trimInput(params.products[i].sku);
+      params.products[i].brand = trimInput(params.products[i].brand);
       //1.根据sku查找eachProduct(eachProduct 可能为null)
       var eachProduct = await models.producttemp.findOne({
         where: {

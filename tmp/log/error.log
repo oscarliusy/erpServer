@@ -1,0 +1,30 @@
+[2022-01-14T10:52:37.511] [ERROR] error - UnauthorizedError: token invalid
+    at Object.throw (D:\projects\20200506ERPTask\erpServer\node_modules\koa\lib\context.js:97:11)
+    at tokenVerify (D:\projects\20200506ERPTask\erpServer\src\util\tokenVerify.js:29:22)
+    at dispatch (D:\projects\20200506ERPTask\erpServer\node_modules\koa-compose\index.js:42:32)
+    at cors (D:\projects\20200506ERPTask\erpServer\node_modules\@koa\cors\index.js:98:22)
+    at dispatch (D:\projects\20200506ERPTask\erpServer\node_modules\koa-compose\index.js:42:32)
+    at bodyParser (D:\projects\20200506ERPTask\erpServer\node_modules\koa-bodyparser\index.js:95:11)
+    at processTicksAndRejections (internal/process/task_queues.js:97:5)
+    at async D:\projects\20200506ERPTask\erpServer\src\server.js:14:5 {
+  headers: {
+    'Access-Control-Allow-Origin': 'http://localhost:3000',
+    'Access-Control-Allow-Credentials': 'true',
+    vary: 'Origin'
+  }
+}
+[2022-01-14T10:52:50.033] [ERROR] error - UnauthorizedError: token invalid
+    at Object.throw (D:\projects\20200506ERPTask\erpServer\node_modules\koa\lib\context.js:97:11)
+    at tokenVerify (D:\projects\20200506ERPTask\erpServer\src\util\tokenVerify.js:29:22)
+    at dispatch (D:\projects\20200506ERPTask\erpServer\node_modules\koa-compose\index.js:42:32)
+    at cors (D:\projects\20200506ERPTask\erpServer\node_modules\@koa\cors\index.js:98:22)
+    at dispatch (D:\projects\20200506ERPTask\erpServer\node_modules\koa-compose\index.js:42:32)
+    at bodyParser (D:\projects\20200506ERPTask\erpServer\node_modules\koa-bodyparser\index.js:95:11)
+    at processTicksAndRejections (internal/process/task_queues.js:97:5)
+    at async D:\projects\20200506ERPTask\erpServer\src\server.js:14:5 {
+  headers: {
+    'Access-Control-Allow-Origin': 'http://localhost:3000',
+    'Access-Control-Allow-Credentials': 'true',
+    vary: 'Origin'
+  }
+}
