@@ -807,6 +807,7 @@ const calcOutstockIndex = (params) => {
 }
 
 /**
+ * 去除空格
  * trim() 方法不适用于 null, undefined, Number 类型。
  * trim() 方法用于删除字符串的头尾空白符，空白符包括：空格、制表符 tab、换行符等其他空白符等。
  */
